@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import hashlib
 import base64
+import html
 import math
 import os
+import re
 import sys
 from io import BytesIO
 from pathlib import Path
@@ -160,16 +162,21 @@ st.markdown(
 .home-link{
     display:inline-flex;
     align-items:center;
+    justify-content:center;
     gap:.38rem;
-    background:white;
+    background:#eaf2fb;
     color:#173f6b!important;
     text-decoration:none!important;
-    border-radius:999px;
+    border:1px solid #9fbedf;
+    border-radius:14px;
     padding:.28rem .58rem;
     font-weight:700;
-    box-shadow:0 2px 8px rgba(0,0,0,.13);
+    box-shadow:0 2px 8px rgba(0,0,0,.10);
     white-space:nowrap;
-    font-size:.82rem
+    font-size:.82rem;
+    height:42px;
+    min-width:118px;
+    box-sizing:border-box;
 }
 
 .home-link img{
@@ -322,6 +329,15 @@ st.markdown(
     max-height:66px
 }
 
+
+.cut-visible-field-label{
+    font-size:.82rem;
+    font-weight:750;
+    color:#334155;
+    margin:.45rem 0 .12rem 0;
+    line-height:1.15;
+}
+
 /* ------------------------------------------------ */
 /* Compact number inputs                            */
 /* ------------------------------------------------ */
@@ -405,10 +421,16 @@ div[data-testid="stNumberInput"] input{
     font-size:.74rem!important;
 }
 
-/* Keep Streamlit number-input labels visible when label_visibility="visible".
-   Earlier versions hid all labels globally, which made fields unnamed on narrow screens. */
-div[data-testid="stNumberInput"] label{
-    display:flex!important;
+/* Compact engineering tables use explicit header rows, so Streamlit widget
+   labels must not be repeated inside the cells. */
+div[data-testid="stNumberInput"] label,
+div[data-testid="stSelectbox"] label{
+    display:none!important;
+    height:0!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    visibility:hidden!important;
 }
 
 @media(max-width:900px){
@@ -425,11 +447,548 @@ div[data-testid="stNumberInput"] label{
         grid-template-columns:repeat(2,1fr)
     }
 }
+
+
+/* ------------------------------------------------ */
+/* v7.4 responsive compact engineering grids         */
+/* ------------------------------------------------ */
+/* Mobile fix: keep Streamlit column rows as compact grid rows.
+   The expander body is the single horizontal scroll container; individual
+   widgets are not allowed to create their own horizontal/vertical whitespace. */
+@media(max-width:900px){
+    div[data-testid="stExpander"] details > div{
+        overflow-x:auto!important;
+        overflow-y:visible!important;
+        -webkit-overflow-scrolling:touch!important;
+        padding-left:.55rem!important;
+        padding-right:.55rem!important;
+    }
+
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]{
+        display:grid!important;
+        grid-auto-flow:column!important;
+        grid-auto-columns:max-content!important;
+        align-items:start!important;
+        flex-wrap:nowrap!important;
+        gap:.10rem!important;
+        width:max-content!important;
+        min-width:max-content!important;
+        max-width:none!important;
+        overflow:visible!important;
+        margin:.015rem 0!important;
+        padding:0!important;
+    }
+
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))){
+        grid-template-columns:108px 132px 132px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(6)):not(:has(> div:nth-child(7))){
+        grid-template-columns:104px 76px 76px 104px 96px 96px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(4)):not(:has(> div:nth-child(5))){
+        grid-template-columns:150px 150px 150px 120px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)):not(:has(> div:nth-child(6))){
+        grid-template-columns:135px 135px 100px 110px 110px!important;
+    }
+
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div,
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+        width:auto!important;
+        min-width:0!important;
+        max-width:none!important;
+        flex:none!important;
+        padding:0!important;
+        margin:0!important;
+    }
+
+    .input-grid-header{
+        font-size:.72rem!important;
+        line-height:1.05!important;
+        padding:.03rem .03rem!important;
+        white-space:nowrap!important;
+        border-bottom:1px solid #cfd8e3!important;
+        min-height:1.05rem!important;
+        display:flex!important;
+        align-items:end!important;
+    }
+    .input-grid-label{
+        font-size:.72rem!important;
+        line-height:1.05!important;
+        padding:.03rem .03rem!important;
+        min-height:1.72rem!important;
+        display:flex!important;
+        align-items:center!important;
+        white-space:nowrap!important;
+    }
+    .input-grid-value{
+        font-size:.72rem!important;
+        line-height:1.05!important;
+        padding:.03rem .03rem!important;
+        min-height:1.72rem!important;
+        display:flex!important;
+        align-items:center!important;
+        white-space:nowrap!important;
+    }
+
+    div[data-testid="stNumberInput"],
+    div[data-testid="stSelectbox"],
+    div[data-testid="stCheckbox"]{
+        margin:0!important;
+        padding:0!important;
+    }
+    div[data-testid="stNumberInput"] label,
+    div[data-testid="stSelectbox"] label{
+        display:none!important;
+        height:0!important;
+        min-height:0!important;
+        margin:0!important;
+        padding:0!important;
+        visibility:hidden!important;
+    }
+    div[data-testid="stNumberInput"] input{
+        height:1.72rem!important;
+        min-height:1.72rem!important;
+        padding:.02rem .24rem!important;
+        font-size:.72rem!important;
+        border-radius:.42rem!important;
+    }
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div{
+        min-height:1.92rem!important;
+        height:1.92rem!important;
+        font-size:.78rem!important;
+        border-radius:.50rem!important;
+    }
+    div[data-testid="stVerticalBlock"]{
+        gap:.08rem!important;
+    }
+    .stMarkdown:has(.input-grid-header),
+    .stMarkdown:has(.input-grid-label),
+    .stMarkdown:has(.input-grid-value){
+        margin:0!important;
+        padding:0!important;
+    }
+    h4{
+        margin-top:.50rem!important;
+        margin-bottom:.18rem!important;
+        font-size:1.05rem!important;
+    }
+}
+
+/* Main navigation: align previous/select/next in one row and color them. */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div{
+    background:#eaf2fb!important;
+    border:1px solid #b8cce2!important;
+    border-radius:11px!important;
+}
+button[kind="secondary"]{
+    background:#e8eef6!important;
+    border:1px solid #b8cce2!important;
+    color:#223044!important;
+    border-radius:11px!important;
+}
+button[kind="secondary"]:hover{
+    background:#dbe8f6!important;
+    border-color:#7fa2c7!important;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:.45rem;
+    margin:-.35rem 0 .55rem .05rem;
+    flex-wrap:nowrap;
+}
+.header-actions .home-link{margin:0;}
+/* Make Home and About visually identical without Streamlit columns. */
+.about-details{position:relative;margin:0;padding:0;}
+.about-details summary{
+    list-style:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    height:42px;
+    min-width:118px;
+    width:118px;
+    box-sizing:border-box;
+    background:#eaf2fb;
+    border:1px solid #9fbedf;
+    color:#173f6b;
+    border-radius:14px;
+    font-weight:700;
+    box-shadow:0 2px 8px rgba(0,0,0,.10);
+    cursor:pointer;
+    white-space:nowrap;
+}
+.about-details summary::-webkit-details-marker{display:none;}
+.about-details[open] summary{background:#dbe8f6;border-color:#7fa2c7;}
+.about-details > div{
+    position:absolute;
+    z-index:1000;
+    top:48px;
+    left:0;
+    width:min(360px, calc(100vw - 2rem));
+    background:#fff;
+    border:1px solid #cfd8e3;
+    border-radius:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,.16);
+    padding:.75rem;
+    color:#223044;
+    font-size:.82rem;
+    line-height:1.35;
+}
+
+@media(max-width:900px){
+    .header-actions{gap:.35rem;margin:.35rem 0 .55rem .05rem;}
+    .home-link, .about-details summary{
+        width:118px!important;
+        min-width:118px!important;
+        max-width:118px!important;
+        height:42px!important;
+        margin:0!important;
+    }
+}
+
+.about-chip{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:32px;
+    padding:.28rem .72rem;
+    border-radius:999px;
+    background:#ffffff;
+    color:#173f6b!important;
+    font-weight:750;
+    box-shadow:0 2px 8px rgba(0,0,0,.13);
+    border:1px solid #d8e2ee;
+}
+
+@media(max-width:900px){
+    .block-container{padding-left:.75rem;padding-right:.75rem;}
+    .cut-hero h1{font-size:1.25rem!important;}
+}
+
 </style>
 """,
     unsafe_allow_html=True,
 )
 
+
+# v7.4 FIX6: final mobile polishing overrides for compact engineering input grids.
+st.markdown(
+    """
+<style>
+@media(max-width:900px){
+    .header-actions{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:center!important;
+        justify-content:flex-start!important;
+        gap:.50rem!important;
+        width:max-content!important;
+        max-width:100%!important;
+        margin:.35rem 0 .55rem .05rem!important;
+        overflow:visible!important;
+    }
+    .home-link, .about-details summary{
+        width:118px!important;
+        min-width:118px!important;
+        max-width:118px!important;
+        height:42px!important;
+        padding:0!important;
+        margin:0!important;
+        flex:0 0 118px!important;
+        box-sizing:border-box!important;
+    }
+
+    /* One and only one horizontal scroll region per expander body. */
+    div[data-testid="stExpander"] details > div{
+        overflow-x:auto!important;
+        overflow-y:visible!important;
+        -webkit-overflow-scrolling:touch!important;
+        padding:.85rem .72rem .62rem .72rem!important;
+    }
+
+    /* Streamlit columns are forced to behave as a real table row on phones. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:stretch!important;
+        justify-content:flex-start!important;
+        gap:.22rem!important;
+        width:max-content!important;
+        min-width:max-content!important;
+        max-width:none!important;
+        overflow:visible!important;
+        margin:0!important;
+        padding:0!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div,
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+        flex:0 0 auto!important;
+        width:auto!important;
+        min-width:0!important;
+        max-width:none!important;
+        padding:0!important;
+        margin:0!important;
+        overflow:visible!important;
+    }
+
+    /* Three-column engineering rows: Parameter | Left | Right. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))) > div:nth-child(1){
+        flex-basis:126px!important; width:126px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))) > div:nth-child(2),
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))) > div:nth-child(3){
+        flex-basis:176px!important; width:176px!important;
+    }
+
+    /* Six-column global parameter rows. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(6)):not(:has(> div:nth-child(7))) > div{
+        flex-basis:118px!important; width:118px!important;
+    }
+
+    /* Four- and five-column numerical/animation rows. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(4)):not(:has(> div:nth-child(5))) > div{
+        flex-basis:156px!important; width:156px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)):not(:has(> div:nth-child(6))) > div{
+        flex-basis:144px!important; width:144px!important;
+    }
+
+    .stMarkdown:has(.input-grid-header),
+    .stMarkdown:has(.input-grid-label),
+    .stMarkdown:has(.input-grid-value){
+        margin:0!important;
+        padding:0!important;
+        overflow:visible!important;
+    }
+    .stMarkdown:has(.input-grid-header) p,
+    .stMarkdown:has(.input-grid-label) p,
+    .stMarkdown:has(.input-grid-value) p{
+        margin:0!important;
+        padding:0!important;
+    }
+
+    .input-grid-header{
+        height:1.40rem!important;
+        min-height:1.40rem!important;
+        line-height:1.05!important;
+        padding:0 .16rem .10rem .16rem!important;
+        display:flex!important;
+        align-items:flex-end!important;
+        white-space:nowrap!important;
+        overflow:visible!important;
+        font-size:.72rem!important;
+        border-bottom:1px solid #cfd8e3!important;
+    }
+    .input-grid-label,
+    .input-grid-value{
+        height:2.18rem!important;
+        min-height:2.18rem!important;
+        line-height:1.05!important;
+        padding:.06rem .16rem!important;
+        display:flex!important;
+        align-items:center!important;
+        white-space:nowrap!important;
+        overflow:visible!important;
+        font-size:.72rem!important;
+    }
+
+    div[data-testid="stNumberInput"],
+    div[data-testid="stSelectbox"],
+    div[data-testid="stCheckbox"]{
+        margin:0!important;
+        padding:0!important;
+        width:100%!important;
+        max-width:none!important;
+        overflow:visible!important;
+    }
+    div[data-testid="stNumberInput"] input{
+        height:2.06rem!important;
+        min-height:2.06rem!important;
+        padding:.05rem .28rem!important;
+        font-size:.72rem!important;
+        border-radius:.46rem!important;
+    }
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div{
+        min-height:2.10rem!important;
+        height:2.10rem!important;
+        font-size:.76rem!important;
+        border-radius:.50rem!important;
+    }
+    div[data-testid="stVerticalBlock"]{
+        gap:.10rem!important;
+    }
+    h4{
+        margin-top:.70rem!important;
+        margin-bottom:.28rem!important;
+        font-size:1.05rem!important;
+        line-height:1.15!important;
+    }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
+
+# v7.4 FIX7: final mobile spacing polish.  Keep the table-like Streamlit
+# column rows compact, but give header rows enough real height so the first
+# data row cannot collide with the headings on narrow screens.
+st.markdown(
+    """
+<style>
+@media(max-width:900px){
+    /* Header / about buttons: same size and always in one row. */
+    .header-actions{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:center!important;
+        gap:.45rem!important;
+        width:100%!important;
+        overflow:visible!important;
+        margin:.35rem 0 .60rem 0!important;
+    }
+    .home-link, .about-details summary{
+        flex:0 0 122px!important;
+        width:122px!important;
+        min-width:122px!important;
+        max-width:122px!important;
+        height:42px!important;
+        box-sizing:border-box!important;
+    }
+
+    /* Only the expander body scrolls horizontally; cells/widgets never do. */
+    div[data-testid="stExpander"] details > div{
+        overflow-x:auto!important;
+        overflow-y:visible!important;
+        -webkit-overflow-scrolling:touch!important;
+        padding:.80rem .70rem .64rem .70rem!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:stretch!important;
+        gap:.18rem!important;
+        width:max-content!important;
+        min-width:max-content!important;
+        max-width:none!important;
+        overflow:visible!important;
+        margin:0!important;
+        padding:0!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div,
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+        flex:0 0 auto!important;
+        padding:0!important;
+        margin:0!important;
+        min-width:0!important;
+        max-width:none!important;
+        overflow:visible!important;
+    }
+
+    /* Input table: narrow enough to be readable on phone, wide enough not to break. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))) > div:nth-child(1){
+        flex-basis:122px!important; width:122px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))) > div:nth-child(2),
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))) > div:nth-child(3){
+        flex-basis:170px!important; width:170px!important;
+    }
+
+    /* Global parameters: tighter, but labels remain visible. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(6)):not(:has(> div:nth-child(7))) > div{
+        flex-basis:112px!important; width:112px!important;
+    }
+
+    /* Numerical/animation rows. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(4)):not(:has(> div:nth-child(5))) > div{
+        flex-basis:150px!important; width:150px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)):not(:has(> div:nth-child(6))) > div{
+        flex-basis:138px!important; width:138px!important;
+    }
+
+    .stMarkdown:has(.input-grid-header),
+    .stMarkdown:has(.input-grid-label),
+    .stMarkdown:has(.input-grid-value){
+        margin:0!important;
+        padding:0!important;
+        overflow:visible!important;
+    }
+    .stMarkdown:has(.input-grid-header){
+        margin-bottom:.18rem!important;
+    }
+    .stMarkdown:has(.input-grid-header) p,
+    .stMarkdown:has(.input-grid-label) p,
+    .stMarkdown:has(.input-grid-value) p{
+        margin:0!important;
+        padding:0!important;
+    }
+
+    .input-grid-header{
+        height:1.58rem!important;
+        min-height:1.58rem!important;
+        line-height:1.05!important;
+        padding:0 .14rem .16rem .14rem!important;
+        display:flex!important;
+        align-items:flex-end!important;
+        font-size:.72rem!important;
+        white-space:nowrap!important;
+        overflow:visible!important;
+        border-bottom:1px solid #cfd8e3!important;
+    }
+    .input-grid-label,
+    .input-grid-value{
+        height:1.98rem!important;
+        min-height:1.98rem!important;
+        line-height:1.05!important;
+        padding:.04rem .14rem!important;
+        display:flex!important;
+        align-items:center!important;
+        font-size:.72rem!important;
+        white-space:nowrap!important;
+        overflow:visible!important;
+    }
+    div[data-testid="stNumberInput"],
+    div[data-testid="stSelectbox"],
+    div[data-testid="stCheckbox"]{
+        margin:0!important;
+        padding:0!important;
+        width:100%!important;
+        max-width:none!important;
+        overflow:visible!important;
+    }
+    div[data-testid="stNumberInput"] input{
+        height:1.88rem!important;
+        min-height:1.88rem!important;
+        padding:.04rem .26rem!important;
+        font-size:.72rem!important;
+        border-radius:.44rem!important;
+    }
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div{
+        min-height:1.98rem!important;
+        height:1.98rem!important;
+        font-size:.76rem!important;
+        border-radius:.50rem!important;
+    }
+    h4{
+        margin-top:.62rem!important;
+        margin-bottom:.34rem!important;
+        font-size:1.05rem!important;
+        line-height:1.15!important;
+    }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
 def asset_path(*parts: str) -> Path:
     return APP_DIR.joinpath(*parts)
@@ -506,8 +1065,7 @@ def _with_help_kwargs(label, kwargs):
         h = _help_for(label)
         if h:
             kwargs["help"] = h
-    if kwargs.get("label_visibility") == "collapsed" and str(label).strip():
-        kwargs["label_visibility"] = "visible"
+    # Respect intentional collapsed labels in compact table-like rows.
     return kwargs
 
 def _number_input_with_help(label, *args, **kwargs):
@@ -599,6 +1157,11 @@ PERSISTENT_INPUT_KEYS = {
     "stages_df",
     "stage_anim_plot_type",
     "stage_anim_speed_ms",
+    "stage_anim_x_min",
+    "stage_anim_x_max",
+    "ui_stage_anim_x_min",
+    "ui_stage_anim_x_max",
+    "stage_anim_auto_x_pending",
     "stage_anim_results",
     "water_anim_summary",
     "water_anim_levels",
@@ -638,6 +1201,9 @@ def init_state() -> None:
         "stages_df": None,
         "stage_anim_plot_type": "Total horizontal pressure",
         "stage_anim_speed_ms": 650,
+        "stage_anim_x_min": None,
+        "stage_anim_x_max": None,
+        "stage_anim_auto_x_pending": False,
         "stage_anim_results": [],
         "solver_display": "Flexible wall - Fixed base (closed-form bending)",
         "reinforcement_type": "No reinforcement",
@@ -2152,19 +2718,18 @@ def stat_cards() -> None:
 def render_header():
     home_img = img_uri(asset_path("home.png"))
 
-    hero_col, action_col = st.columns([5.8, 1.8], gap="small")
-    with hero_col:
-        st.markdown(f"""
-<div class="cut-hero"><div><h1>CUT Embedded Wall</h1><p>{APP_VERSION} · Streamlit interface aligned with the desktop executable</p></div></div>
+    st.markdown(f"""
+<div class="cut-hero"><div><h1>{APP_VERSION}</h1></div></div>
 """, unsafe_allow_html=True)
-    with action_col:
-        st.markdown(f'<a class="home-link" href="{HOME_URL}" target="_blank"><img src="{home_img}" alt="home">CUT Apps Home</a>', unsafe_allow_html=True)
-        try:
-            with st.popover("About", use_container_width=True):
-                st.text(about_text())
-        except Exception:
-            with st.expander("About", expanded=False):
-                st.text(about_text())
+
+    about_html = html.escape(about_text()).replace("\n", "<br>")
+    st.markdown(
+        f"""<div class="header-actions">
+<a class="home-link" href="{HOME_URL}" target="_blank"><img src="{home_img}" alt="home">Home</a>
+<details class="about-details"><summary>About⌄</summary><div>{about_html}</div></details>
+</div>""",
+        unsafe_allow_html=True,
+    )
 
     stat_cards()
 
@@ -2211,16 +2776,32 @@ def input_grid(labels_keys: list[tuple[str, str]], cols: int = 4):
             st.number_input(label, key=key, label_visibility="visible")
 
 
+
+def _cut_editor_text_df(df, exclude_cols=None):
+    """Return a copy whose editable TextColumn fields are strings.
+    This avoids Streamlit type errors when TextColumn is used for numeric data,
+    while write-back normalization still converts values to floats.
+    """
+    out = df.copy()
+    exclude_cols = set(exclude_cols or [])
+    for col in out.columns:
+        if col not in exclude_cols:
+            out[col] = out[col].map(lambda v: "" if pd.isna(v) else str(v))
+    return out
+
 def _layer_column_config(prefix: str):
+    # Text columns are used intentionally so Streamlit does not right-align
+    # numeric-looking values in the editor. Normalization below still converts
+    # values back to floats.
     return {
         "code": st.column_config.TextColumn("code", default=f"{prefix}1", width="small"),
-        "h (m)": st.column_config.NumberColumn("h (m)", default=1.0, min_value=0.0, format="%.4g", width="small"),
-        "c′ (kPa)": st.column_config.NumberColumn("c′ (kPa)", default=0.001, min_value=0.001, format="%.4g", width="small"),
-        "φ′ (°)": st.column_config.NumberColumn("φ′ (°)", default=30.0, format="%.4g", width="small"),
-        "γ (kN/m³)": st.column_config.NumberColumn("γ (kN/m³)", default=20.0, format="%.4g", width="small"),
-        "γsat (kN/m³)": st.column_config.NumberColumn("γsat (kN/m³)", default=20.0, format="%.4g", width="small"),
-        "E (kPa)": st.column_config.NumberColumn("E (kPa)", default=20000.0, min_value=0.0, format="%.5g", width="medium"),
-        "ν (-)": st.column_config.NumberColumn("ν (-)", default=0.30, min_value=0.0, max_value=0.499, format="%.4g", width="small"),
+        "h (m)": st.column_config.TextColumn("h (m)", default="1.0", width="small"),
+        "c′ (kPa)": st.column_config.TextColumn("c′ (kPa)", default="0.001", width="small"),
+        "φ′ (°)": st.column_config.TextColumn("φ′ (°)", default="30.0", width="small"),
+        "γ (kN/m³)": st.column_config.TextColumn("γ (kN/m³)", default="20.0", width="small"),
+        "γsat (kN/m³)": st.column_config.TextColumn("γsat (kN/m³)", default="20.0", width="small"),
+        "E (kPa)": st.column_config.TextColumn("E (kPa)", default="20000", width="medium"),
+        "ν (-)": st.column_config.TextColumn("ν (-)", default="0.30", width="small"),
     }
 
 
@@ -2289,7 +2870,7 @@ def synced_number_input(label: str, key: str, default: float, **kwargs):
     return st.number_input(
         label,
         key=key,
-        label_visibility="visible",
+        label_visibility=kwargs.pop("label_visibility", "collapsed"),
         **kwargs
     )
 
@@ -2298,6 +2879,255 @@ repair_core_numeric_defaults()
 
 handle_selector_query_params()
 
+
+
+# v7.4 FIX9: replace fragile Streamlit-column pseudo-tables with native compact
+# editable tables.  This CSS only tightens data-editor spacing and does not
+# affect the solver/backend.
+st.markdown(
+    """
+<style>
+/* Compact native data-editor tables used for Model inputs. */
+div[data-testid="stDataFrame"]{
+    margin-top:.15rem!important;
+    margin-bottom:.65rem!important;
+}
+div[data-testid="stDataFrame"] [role="gridcell"],
+div[data-testid="stDataFrame"] [role="columnheader"]{
+    font-size:.78rem!important;
+}
+@media(max-width:900px){
+    div[data-testid="stDataFrame"]{
+        max-width:100%!important;
+        overflow-x:auto!important;
+        -webkit-overflow-scrolling:touch!important;
+    }
+    div[data-testid="stExpander"] details > div{
+        padding:.85rem .65rem .55rem .65rem!important;
+    }
+    h4{
+        margin-top:.55rem!important;
+        margin-bottom:.25rem!important;
+        font-size:1.05rem!important;
+    }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
+
+# v7.4 FIX11: enforce left alignment for every Streamlit table/dataframe/editor
+# and keep the navigation/action buttons in the same elegant blue palette.
+st.markdown(
+    """
+<style>
+/* ---------------- All tables: left aligned cells everywhere ---------------- */
+div[data-testid="stDataFrame"],
+div[data-testid="stDataFrame"] *{
+    text-align:left!important;
+}
+div[data-testid="stDataFrame"] [role="grid"],
+div[data-testid="stDataFrame"] [role="row"],
+div[data-testid="stDataFrame"] [role="gridcell"],
+div[data-testid="stDataFrame"] [role="columnheader"],
+div[data-testid="stDataFrame"] [data-testid="glide-cell"],
+div[data-testid="stDataFrame"] [data-testid="stDataFrameCell"]{
+    text-align:left!important;
+    justify-content:flex-start!important;
+    align-items:center!important;
+}
+div[data-testid="stDataFrame"] [role="gridcell"] > div,
+div[data-testid="stDataFrame"] [role="columnheader"] > div{
+    text-align:left!important;
+    justify-content:flex-start!important;
+    margin-left:0!important;
+}
+[data-testid="stTable"] table,
+[data-testid="stTable"] th,
+[data-testid="stTable"] td{
+    text-align:left!important;
+}
+/* Keep ordinary input text left aligned too. */
+div[data-testid="stNumberInput"] input,
+div[data-testid="stTextInput"] input,
+div[data-testid="stTextArea"] textarea{
+    text-align:left!important;
+}
+
+/* ---------------- Elegant common button palette ---------------- */
+button[kind="secondary"],
+button[data-testid="baseButton-secondary"]{
+    background:linear-gradient(180deg,#edf6ff 0%,#e3effb 100%)!important;
+    border:1px solid #9fbfe2!important;
+    color:#1f334d!important;
+    border-radius:13px!important;
+    box-shadow:0 2px 8px rgba(31,95,153,.08)!important;
+    font-weight:650!important;
+}
+button[kind="secondary"]:hover,
+button[data-testid="baseButton-secondary"]:hover{
+    background:linear-gradient(180deg,#e2f0ff 0%,#d4e7fb 100%)!important;
+    border-color:#6f9ecc!important;
+    box-shadow:0 4px 12px rgba(31,95,153,.14)!important;
+}
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div{
+    background:linear-gradient(180deg,#edf6ff 0%,#e3effb 100%)!important;
+    border:1px solid #9fbfe2!important;
+    color:#1f334d!important;
+    border-radius:13px!important;
+}
+.header-actions .home-link,
+.about-details summary{
+    width:132px!important;
+    min-width:132px!important;
+    max-width:132px!important;
+    background:linear-gradient(180deg,#edf6ff 0%,#e3effb 100%)!important;
+    border:1px solid #9fbfe2!important;
+    color:#12355b!important;
+    border-radius:13px!important;
+    box-shadow:0 2px 8px rgba(31,95,153,.08)!important;
+    font-weight:750!important;
+}
+.header-actions .home-link:hover,
+.about-details summary:hover{
+    background:linear-gradient(180deg,#e2f0ff 0%,#d4e7fb 100%)!important;
+    border-color:#6f9ecc!important;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+def _cut_fmt(value: Any, fmt: str = "{:.2f}") -> str:
+    try:
+        return fmt.format(float(value))
+    except Exception:
+        return str(value)
+
+def _cut_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return default
+        text = str(value).strip().replace(",", ".")
+        if text == "":
+            return default
+        return float(text)
+    except Exception:
+        return default
+
+def sync_model_input_editors(force: bool = False) -> None:
+    H_L = height_from_df(st.session_state.left_layers_df)
+    H_R = height_from_df(st.session_state.right_layers_df)
+
+    input_df = pd.DataFrame({
+        "Parameter": ["H (m)", "β (deg)", "q (kPa)", "z_w (m)"],
+        "Left / excavation": [
+            _cut_fmt(H_L),
+            _cut_fmt(st.session_state.get("beta_L", 0.0)),
+            _cut_fmt(st.session_state.get("q_L", 0.0)),
+            _cut_fmt(st.session_state.get("z_w_L", 20.0)),
+        ],
+        "Right / retained": [
+            _cut_fmt(H_R),
+            _cut_fmt(st.session_state.get("beta_R", 0.0)),
+            _cut_fmt(st.session_state.get("q_R", 0.0)),
+            _cut_fmt(st.session_state.get("z_w_R", 20.0)),
+        ],
+    })
+
+    global_df = pd.DataFrame({
+        "γ_w (kN/m³)": [_cut_fmt(st.session_state.get("gamma_w", 9.81))],
+        "k_h (-)": [_cut_fmt(st.session_state.get("k_h", 0.0), "{:.3g}")],
+        "k_v (-)": [_cut_fmt(st.session_state.get("k_v", 0.0), "{:.3g}")],
+        "Δx_trans (m)": [_cut_fmt(st.session_state.get("dx_trans", 0.0), "{:.3g}")],
+        "θ_rot (deg)": [_cut_fmt(st.session_state.get("theta_rot", 0.0), "{:.3g}")],
+        "z_pivot (m)": [_cut_fmt(st.session_state.get("z_pivot", 4.0))],
+    })
+
+    if force:
+        st.session_state.model_input_compact_df = input_df.copy()
+    elif "model_input_compact_df" not in st.session_state:
+        st.session_state.model_input_compact_df = input_df.copy()
+
+    if force:
+        st.session_state.global_parameters_compact_df = global_df.copy()
+    elif "global_parameters_compact_df" not in st.session_state:
+        st.session_state.global_parameters_compact_df = global_df.copy()
+
+def _apply_data_editor_edits(df: pd.DataFrame, editor_key: str) -> pd.DataFrame:
+    out = pd.DataFrame(df).copy()
+    state = st.session_state.get(editor_key, {})
+
+    if not isinstance(state, dict):
+        return out
+
+    edited_rows = state.get("edited_rows", {}) or {}
+
+    for r, changes in edited_rows.items():
+        try:
+            ri = int(r)
+        except Exception:
+            continue
+
+        if ri < 0 or ri >= len(out):
+            continue
+
+        for col, val in dict(changes).items():
+            if col in out.columns:
+                out.at[ri, col] = val
+
+    return out
+
+
+def _commit_model_input_editor() -> None:
+    key = "model_input_compact_editor_v3"
+
+    if "model_input_compact_df" not in st.session_state:
+        return
+
+    df = _apply_data_editor_edits(
+        st.session_state.model_input_compact_df,
+        key,
+    )
+
+    st.session_state.model_input_compact_df = df.copy()
+
+    try:
+        st.session_state.beta_L = _cut_float(df.loc[1, "Left / excavation"])
+        st.session_state.beta_R = _cut_float(df.loc[1, "Right / retained"])
+        st.session_state.q_L = _cut_float(df.loc[2, "Left / excavation"])
+        st.session_state.q_R = _cut_float(df.loc[2, "Right / retained"])
+        st.session_state.z_w_L = _cut_float(df.loc[3, "Left / excavation"], 20.0)
+        st.session_state.z_w_R = _cut_float(df.loc[3, "Right / retained"], 20.0)
+    except Exception:
+        pass
+
+
+def _commit_global_parameters_editor() -> None:
+    key = "global_parameters_compact_editor_v3"
+
+    if "global_parameters_compact_df" not in st.session_state:
+        return
+
+    df = _apply_data_editor_edits(
+        st.session_state.global_parameters_compact_df,
+        key,
+    )
+
+    st.session_state.global_parameters_compact_df = df.copy()
+
+    try:
+        row = df.iloc[0]
+        st.session_state.gamma_w = _cut_float(row["γ_w (kN/m³)"], 9.81)
+        st.session_state.k_h = _cut_float(row["k_h (-)"])
+        st.session_state.k_v = _cut_float(row["k_v (-)"])
+        st.session_state.dx_trans = _cut_float(row["Δx_trans (m)"])
+        st.session_state.theta_rot = _cut_float(row["θ_rot (deg)"])
+        st.session_state.z_pivot = _cut_float(row["z_pivot (m)"], 4.0)
+    except Exception:
+        pass
 
 def render_model_inputs(model_preview: Any):
     st.markdown('<div class="cut-section-title">Model inputs</div>', unsafe_allow_html=True)
@@ -2309,209 +3139,44 @@ def render_model_inputs(model_preview: Any):
 
         st.markdown("#### Input data")
 
-        H_L = height_from_df(st.session_state.left_layers_df)
-        H_R = height_from_df(st.session_state.right_layers_df)
+        sync_model_input_editors()
 
-        # Header row
-        c0, c1, c2 = st.columns([1.10, 1.0, 1.0], gap="small")
+        edited_input_df = st.data_editor(
+            st.session_state.model_input_compact_df,
+            hide_index=True,
+            use_container_width=True,
+            num_rows="fixed",
+            height=178,
+            key="model_input_compact_editor_v3",
+            on_change=_commit_model_input_editor,
+            disabled=["Parameter"],
+            column_config={
+                "Parameter": st.column_config.TextColumn("Parameter", width="small"),
+                "Left / excavation": st.column_config.TextColumn("Left / excavation", width="medium"),
+                "Right / retained": st.column_config.TextColumn("Right / retained", width="medium"),
+            },
+        )
 
-        with c0:
-            st.markdown(
-                "<div class='input-grid-header'>Parameter</div>",
-                unsafe_allow_html=True
-            )
-
-        with c1:
-            st.markdown(
-                "<div class='input-grid-header'>Left / excavation</div>",
-                unsafe_allow_html=True
-            )
-
-        with c2:
-            st.markdown(
-                "<div class='input-grid-header'>Right / retained</div>",
-                unsafe_allow_html=True
-            )
-
-        # H row
-        c0, c1, c2 = st.columns([1.10, 1.0, 1.0], gap="small")
-
-        with c0:
-            st.markdown(
-                "<div class='input-grid-label'>H (m)</div>",
-                unsafe_allow_html=True
-            )
-
-        with c1:
-            st.markdown(
-                f"<div class='input-grid-value'>{H_L:.3g}</div>",
-                unsafe_allow_html=True
-            )
-
-        with c2:
-            st.markdown(
-                f"<div class='input-grid-value'>{H_R:.3g}</div>",
-                unsafe_allow_html=True
-            )
-
-        # beta row
-        c0, c1, c2 = st.columns([1.10, 1.0, 1.0], gap="small")
-
-        with c0:
-            st.markdown(
-                "<div class='input-grid-label'>β (deg)</div>",
-                unsafe_allow_html=True
-            )
-
-        with c1:
-            synced_number_input(
-                "β Left",
-                "beta_L",
-                0.0
-            )
-
-        with c2:
-            synced_number_input(
-                "β Right",
-                "beta_R",
-                0.0
-            )
-
-        # surcharge row
-        c0, c1, c2 = st.columns([1.10, 1.0, 1.0], gap="small")
-
-        with c0:
-            st.markdown(
-                "<div class='input-grid-label'>q (kPa)</div>",
-                unsafe_allow_html=True
-            )
-
-        with c1:
-            synced_number_input(
-                "q Left",
-                "q_L",
-                0.0
-            )
-
-        with c2:
-            synced_number_input(
-                "q Right",
-                "q_R",
-                0.0
-            )
-
-        # water row
-        c0, c1, c2 = st.columns([1.10, 1.0, 1.0], gap="small")
-
-        with c0:
-            st.markdown(
-                "<div class='input-grid-label'>z_w (m)</div>",
-                unsafe_allow_html=True
-            )
-
-        with c1:
-            synced_number_input(
-                "z_w Left",
-                "z_w_L",
-                20.0
-            )
-
-        with c2:
-            synced_number_input(
-                "z_w Right",
-                "z_w_R",
-                20.0
-            )
-
-
-        # -----------------------
-        # Global params
-        # -----------------------
         st.markdown("#### Global parameters")
 
-        # Header row
-        h1, h2, h3, h4, h5, h6 = st.columns(6, gap="small")
+        edited_global_df = st.data_editor(
+            st.session_state.global_parameters_compact_df,
+            hide_index=True,
+            use_container_width=True,
+            num_rows="fixed",
+            height=80,
+            key="global_parameters_compact_editor_v3",
+            on_change=_commit_global_parameters_editor,
+            column_config={
+                "γ_w (kN/m³)": st.column_config.TextColumn("γ_w (kN/m³)", width="small"),
+                "k_h (-)": st.column_config.TextColumn("k_h (-)", width="small"),
+                "k_v (-)": st.column_config.TextColumn("k_v (-)", width="small"),
+                "Δx_trans (m)": st.column_config.TextColumn("Δx_trans (m)", width="small"),
+                "θ_rot (deg)": st.column_config.TextColumn("θ_rot (deg)", width="small"),
+                "z_pivot (m)": st.column_config.TextColumn("z_pivot (m)", width="small"),
+            },
+        )
 
-        with h1:
-            st.markdown(
-                "<div class='input-grid-header'>γ_w (kN/m³)</div>",
-                unsafe_allow_html=True
-            )
-
-        with h2:
-            st.markdown(
-                "<div class='input-grid-header'>k_h (-)</div>",
-                unsafe_allow_html=True
-            )
-
-        with h3:
-            st.markdown(
-                "<div class='input-grid-header'>k_v (-)</div>",
-                unsafe_allow_html=True
-            )
-
-        with h4:
-            st.markdown(
-                "<div class='input-grid-header'>Δx_trans (m)</div>",
-                unsafe_allow_html=True
-            )
-
-        with h5:
-            st.markdown(
-                "<div class='input-grid-header'>θ_rot (deg)</div>",
-                unsafe_allow_html=True
-            )
-
-        with h6:
-            st.markdown(
-                "<div class='input-grid-header'>z_pivot (m)</div>",
-                unsafe_allow_html=True
-            )
-
-        # Inputs row
-        g1, g2, g3, g4, g5, g6 = st.columns(6, gap="small")
-
-        with g1:
-            synced_number_input(
-                "γ_w (kN/m³)",
-                "gamma_w",
-                9.81
-            )
-
-        with g2:
-            synced_number_input(
-                "k_h",
-                "k_h",
-                0.0
-            )
-
-        with g3:
-            synced_number_input(
-                "k_v",
-                "k_v",
-                0.0
-            )
-
-        with g4:
-            synced_number_input(
-                "Δx_trans (m)",
-                "dx_trans",
-                0.0
-            )
-
-        with g5:
-            synced_number_input(
-                "θ_rot (deg)",
-                "theta_rot",
-                0.0
-            )
-
-        with g6:
-            synced_number_input(
-                "z_pivot (m)",
-                "z_pivot",
-                4.0
-            )
 
     # -----------------------------
     # Wall stiffness
@@ -2519,106 +3184,66 @@ def render_model_inputs(model_preview: Any):
     with st.expander("Wall stiffness", expanded=True):
 
         stiffness_options = ["EI", "E & I", "E & t"]
-
-        stiffness = st.session_state.get(
-            "stiffness_type_select",
-            st.session_state.get("stiffness_type", "EI")
-        )
-
+        stiffness = st.session_state.get("stiffness_type_select", st.session_state.get("stiffness_type", "EI"))
         if stiffness not in stiffness_options:
             stiffness = "EI"
 
         if stiffness == "EI":
-            h1 = "EI (kPa·m⁴)"
-            h2 = "—"
-        elif stiffness == "E & I":
-            h1 = "E (kPa)"
-            h2 = "I (m⁴)"
+            stiffness_df = pd.DataFrame({
+                "Stiffness Type": [stiffness],
+                "EI (kPa·m⁴)": [_cut_fmt(st.session_state.get("EI", 1500000.0))],
+            })
+            edited_stiffness_df = st.data_editor(
+                stiffness_df,
+                hide_index=True,
+                use_container_width=True,
+                num_rows="fixed",
+                height=80,
+                key="wall_stiffness_compact_editor_ei_v1",
+                column_config={
+                    "Stiffness Type": st.column_config.SelectboxColumn("Stiffness Type", options=stiffness_options, width="medium"),
+                    "EI (kPa·m⁴)": st.column_config.TextColumn("EI (kPa·m⁴)", width="medium"),
+                },
+            )
+            try:
+                new_stiffness = str(edited_stiffness_df.loc[0, "Stiffness Type"])
+                st.session_state.stiffness_type_select = new_stiffness
+                st.session_state.stiffness_type = new_stiffness
+                st.session_state.EI = _cut_float(edited_stiffness_df.loc[0, "EI (kPa·m⁴)"], 1500000.0)
+                if new_stiffness != stiffness:
+                    st.rerun()
+            except Exception:
+                pass
         else:
-            h1 = "E (kPa)"
-            h2 = "t (m)"
-
-        # Header row
-        c0, c1, c2 = st.columns([1.0, 1.0, 1.0], gap="small")
-
-        with c0:
-            st.markdown(
-                "<div class='input-grid-header'>Stiffness Type</div>",
-                unsafe_allow_html=True
+            second_label = "I (m⁴)" if stiffness == "E & I" else "t (m)"
+            stiffness_df = pd.DataFrame({
+                "Stiffness Type": [stiffness],
+                "E (kPa)": [_cut_fmt(st.session_state.get("E", 1000000.0))],
+                second_label: [_cut_fmt(st.session_state.get("I_or_t", 1.5), "{:.4g}")],
+            })
+            edited_stiffness_df = st.data_editor(
+                stiffness_df,
+                hide_index=True,
+                use_container_width=True,
+                num_rows="fixed",
+                height=80,
+                key=f"wall_stiffness_compact_editor_{stiffness.replace(' ', '_').replace('&', 'and')}_v1",
+                column_config={
+                    "Stiffness Type": st.column_config.SelectboxColumn("Stiffness Type", options=stiffness_options, width="medium"),
+                    "E (kPa)": st.column_config.TextColumn("E (kPa)", width="medium"),
+                    second_label: st.column_config.TextColumn(second_label, width="medium"),
+                },
             )
-
-        with c1:
-            st.markdown(
-                f"<div class='input-grid-header'>{h1}</div>",
-                unsafe_allow_html=True
-            )
-
-        with c2:
-            st.markdown(
-                f"<div class='input-grid-header'>{h2}</div>",
-                unsafe_allow_html=True
-            )
-
-        # Input row
-        c0, c1, c2 = st.columns([1.0, 1.0, 1.0], gap="small")
-
-        with c0:
-            stiffness = st.selectbox(
-                "Stiffness type",
-                stiffness_options,
-                key="stiffness_type_select",
-                label_visibility="collapsed"
-            )
-
-        st.session_state.stiffness_type = stiffness
-
-        if stiffness == "EI":
-
-            with c1:
-                synced_number_input(
-                    "EI (kPa·m⁴)",
-                    "EI",
-                    1500000.0
-                )
-
-            with c2:
-                st.markdown(
-                    "<div class='input-grid-value'>—</div>",
-                    unsafe_allow_html=True
-                )
-
-        elif stiffness == "E & I":
-
-            with c1:
-                synced_number_input(
-                    "E (kPa)",
-                    "E",
-                    1000000.0
-                )
-
-            with c2:
-                synced_number_input(
-                    "I (m⁴)",
-                    "I_or_t",
-                    1.5
-                )
-
-        else:
-
-            with c1:
-                synced_number_input(
-                    "E (kPa)",
-                    "E",
-                    1000000.0
-                )
-
-            with c2:
-                synced_number_input(
-                    "t (m)",
-                    "I_or_t",
-                    1.5
-                )
-
+            try:
+                new_stiffness = str(edited_stiffness_df.loc[0, "Stiffness Type"])
+                st.session_state.stiffness_type_select = new_stiffness
+                st.session_state.stiffness_type = new_stiffness
+                st.session_state.E = _cut_float(edited_stiffness_df.loc[0, "E (kPa)"], 1000000.0)
+                st.session_state.I_or_t = _cut_float(edited_stiffness_df.loc[0, second_label], 1.5)
+                if new_stiffness != stiffness:
+                    st.rerun()
+            except Exception:
+                pass
 
     # =====================================================
     # ✅ LEFT SIDE
@@ -2626,6 +3251,7 @@ def render_model_inputs(model_preview: Any):
     st.markdown("#### Left / excavation side soil layers")
 
     left_df = normalize_layer_df(st.session_state.left_layers_df, "SL").copy()
+    left_df = _cut_editor_text_df(left_df)
     left_df["✓"] = False
 
     left_key = f"left_layers_editor_{hash(str(left_df))}"
@@ -2684,6 +3310,7 @@ def render_model_inputs(model_preview: Any):
     st.markdown("#### Right / retained side soil layers")
 
     right_df = normalize_layer_df(st.session_state.right_layers_df, "SR").copy()
+    right_df = _cut_editor_text_df(right_df)
     right_df["✓"] = False
 
     right_key = f"right_layers_editor_{hash(str(right_df))}"
@@ -2755,7 +3382,7 @@ def _reinf_column_config(rtype: str):
         if c == "code":
             cfg[c] = st.column_config.TextColumn(c, default=str(base.iloc[0][c]), width="small")
         else:
-            cfg[c] = st.column_config.NumberColumn(c, default=float(base.iloc[0][c]), format="%.5g", width="small")
+            cfg[c] = st.column_config.TextColumn(c, default=str(base.iloc[0][c]), width="small")
     return cfg
 
 def add_reinf_row(rtype: str) -> None:
@@ -2811,6 +3438,7 @@ def render_reinforcement(model_preview: Any):
     else:
 
         df = get_reinf_df(rtype).copy()
+        df = _cut_editor_text_df(df)
         df["✓"] = False
 
         edited = st.data_editor(
@@ -2893,74 +3521,87 @@ def render_run():
     st.markdown("#### Numerical controls")
     st.caption("These numerical controls are passed to the active solver mode, so all solvers use the same N, tolerances and integration settings unless a method ignores an irrelevant control.")
 
-    # Row 1 headers
-    h1, h2, h3, h4 = st.columns(4, gap="small")
+    # Compact native table layout (mobile-safe): no st.columns(), no duplicated labels.
+    numerical_row1 = pd.DataFrame({
+        "Integration": [str(st.session_state.get("integration_method", "Gauss"))],
+        "Rigid movement mode": [str(st.session_state.get("no_bending_mode", "Auto (ΣF=0 & ΣM=0)"))],
+        "Rigid optimization solver": [str(st.session_state.get("rigid_optimization_solver", "Fast equilibrium only"))],
+        "N iterations": [str(int(st.session_state.get("N", 30)))],
+    })
+    edited_num1 = st.data_editor(
+        numerical_row1,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        height=80,
+        key="numerical_controls_compact_row1_v1",
+        column_config={
+            "Integration": st.column_config.SelectboxColumn("Integration", options=["Gauss", "Lumped"], width="medium"),
+            "Rigid movement mode": st.column_config.SelectboxColumn("Rigid movement mode", options=["Auto (ΣF=0 & ΣM=0)", "Manual"], width="medium"),
+            "Rigid optimization solver": st.column_config.SelectboxColumn("Rigid optimization solver", options=["Fast equilibrium only", "Energy-aware variational"], width="medium"),
+            "N iterations": st.column_config.TextColumn("N iterations", width="small"),
+        },
+    )
+    try:
+        st.session_state.integration_method = str(edited_num1.loc[0, "Integration"])
+        st.session_state.no_bending_mode = str(edited_num1.loc[0, "Rigid movement mode"])
+        st.session_state.rigid_optimization_solver = str(edited_num1.loc[0, "Rigid optimization solver"])
+        st.session_state.N = max(1, int(_cut_float(edited_num1.loc[0, "N iterations"], 30)))
+    except Exception:
+        pass
 
-    with h1:
-        st.markdown("<div class='input-grid-header'>Integration</div>", unsafe_allow_html=True)
-    with h2:
-        st.markdown("<div class='input-grid-header'>Rigid movement mode</div>", unsafe_allow_html=True)
-    with h3:
-        st.markdown("<div class='input-grid-header'>Rigid optimization solver</div>", unsafe_allow_html=True)
-    with h4:
-        st.markdown("<div class='input-grid-header'>N iterations</div>", unsafe_allow_html=True)
+    numerical_row2 = pd.DataFrame({
+        "Δz / plotting dz (m)": [_cut_fmt(st.session_state.get("dz", 0.05), "{:.4g}")],
+        "n profile points": [str(int(st.session_state.get("n_points", 401)))],
+        "tol": [_cut_fmt(st.session_state.get("tol", 1e-8), "{:.2e}")],
+        "tol_W work band": [_cut_fmt(st.session_state.get("work_band_tol", 0.05), "{:.6g}")],
+    })
+    edited_num2 = st.data_editor(
+        numerical_row2,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        height=80,
+        key="numerical_controls_compact_row2_v1",
+        column_config={
+            "Δz / plotting dz (m)": st.column_config.TextColumn("Δz / plotting dz (m)", width="medium"),
+            "n profile points": st.column_config.TextColumn("n profile points", width="medium"),
+            "tol": st.column_config.TextColumn("tol", width="medium"),
+            "tol_W work band": st.column_config.TextColumn("tol_W work band", width="medium"),
+        },
+    )
+    try:
+        st.session_state.dz = max(0.005, _cut_float(edited_num2.loc[0, "Δz / plotting dz (m)"], 0.05))
+        st.session_state.n_points = max(101, int(_cut_float(edited_num2.loc[0, "n profile points"], 401)))
+        st.session_state.tol = max(1e-8, _cut_float(edited_num2.loc[0, "tol"], 1e-8))
+        st.session_state.work_band_tol = max(0.05, _cut_float(edited_num2.loc[0, "tol_W work band"], 0.05))
+    except Exception:
+        pass
 
-    c1, c2, c3, c4 = st.columns(4, gap="small")
-
-    with c1:
-        st.selectbox("Integration", ["Gauss", "Lumped"], key="integration_method", label_visibility="collapsed")
-    with c2:
-        st.selectbox("Rigid movement mode", ["Auto (ΣF=0 & ΣM=0)", "Manual"], key="no_bending_mode", label_visibility="collapsed")
-    with c3:
-        st.selectbox("Rigid optimization solver", ["Fast equilibrium only", "Energy-aware variational"], key="rigid_optimization_solver", label_visibility="collapsed")
-    with c4:
-        st.number_input("N iterations", key="N", min_value=1, step=1, label_visibility="collapsed")
-
-    # Row 2 headers
-    h1, h2, h3, h4 = st.columns(4, gap="small")
-
-    with h1:
-        st.markdown("<div class='input-grid-header'>Δz / plotting dz (m)</div>", unsafe_allow_html=True)
-    with h2:
-        st.markdown("<div class='input-grid-header'>n profile points</div>", unsafe_allow_html=True)
-    with h3:
-        st.markdown("<div class='input-grid-header'>tol</div>", unsafe_allow_html=True)
-    with h4:
-        st.markdown("<div class='input-grid-header'>tol_W work band</div>", unsafe_allow_html=True)
-
-    c1, c2, c3, c4 = st.columns(4, gap="small")
-
-    with c1:
-        st.number_input("Δz / plotting dz (m)", key="dz", min_value=0.005, format="%.4g", label_visibility="collapsed")
-    with c2:
-        st.number_input("n profile points", key="n_points", min_value=101, step=10, label_visibility="collapsed")
-    with c3:
-        st.number_input("tol", key="tol", min_value=1e-8, format="%.2e", label_visibility="collapsed")
-    with c4:
-        st.number_input("tol_W work band", key="work_band_tol", min_value=0.05, format="%.6g", label_visibility="collapsed")
-
-    # Row 3 headers
-    h1, h2, h3 = st.columns(3, gap="small")
-
-    with h1:
-        st.markdown("<div class='input-grid-header'>tol_F = |ΣF| / scale</div>", unsafe_allow_html=True)
-    with h2:
-        st.markdown("<div class='input-grid-header'>tol_M = |ΣM| / scale</div>", unsafe_allow_html=True)
-    with h3:
-        st.markdown("<div class='input-grid-header'>Parallel execution</div>", unsafe_allow_html=True)
-
-    c1, c2, c3 = st.columns(3, gap="small")
-
-    with c1:
-        st.number_input("tol_F = |ΣF|/scale", key="equilibrium_force_tol", min_value=0.05, format="%.6g", label_visibility="collapsed")
-    with c2:
-        st.number_input("tol_M = |ΣM|/scale", key="equilibrium_moment_tol", min_value=0.05, format="%.6g", label_visibility="collapsed")
-    with c3:
-        st.checkbox(
-            "parallel locally only",
-            key="general_case_parallel",
-            help="For Streamlit Cloud leave OFF; useful only for local runs."
-        )
+    numerical_row3 = pd.DataFrame({
+        "tol_F = |ΣF| / scale": [_cut_fmt(st.session_state.get("equilibrium_force_tol", 0.05), "{:.6g}")],
+        "tol_M = |ΣM| / scale": [_cut_fmt(st.session_state.get("equilibrium_moment_tol", 0.05), "{:.6g}")],
+        "Parallel execution": ["Yes" if bool(st.session_state.get("general_case_parallel", False)) else "No"],
+    })
+    edited_num3 = st.data_editor(
+        numerical_row3,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        height=80,
+        key="numerical_controls_compact_row3_v1",
+        column_config={
+            "tol_F = |ΣF| / scale": st.column_config.TextColumn("tol_F = |ΣF| / scale", width="medium"),
+            "tol_M = |ΣM| / scale": st.column_config.TextColumn("tol_M = |ΣM| / scale", width="medium"),
+            "Parallel execution": st.column_config.SelectboxColumn("Parallel execution", options=["No", "Yes"], width="medium", help="For Streamlit Cloud leave No; useful only for local runs."),
+        },
+    )
+    try:
+        st.session_state.equilibrium_force_tol = max(0.05, _cut_float(edited_num3.loc[0, "tol_F = |ΣF| / scale"], 0.05))
+        st.session_state.equilibrium_moment_tol = max(0.05, _cut_float(edited_num3.loc[0, "tol_M = |ΣM| / scale"], 0.05))
+        st.session_state.general_case_parallel = str(edited_num3.loc[0, "Parallel execution"]).strip().lower() == "yes"
+    except Exception:
+        pass
 
     # -------------------------------------------------------
     # ✅ Run button (with spinner)
@@ -3089,6 +3730,7 @@ def plot_profile_interactive(
     shade_count: int | None = None,
     x_values_for_limits: list[float] | None = None,
     show_legend: bool = False,
+    legend_corner: str | None = None,
 ):
     """Interactive Plotly version of the depth-profile chart."""
 
@@ -3242,6 +3884,10 @@ def plot_profile_interactive(
             bordercolor="rgba(203,213,225,0.9)",
             borderwidth=1,
             font=dict(size=11),
+            x=0.02 if legend_corner == "upper_left" else None,
+            y=0.98 if legend_corner == "upper_left" else None,
+            xanchor="left" if legend_corner == "upper_left" else None,
+            yanchor="top" if legend_corner == "upper_left" else None,
         ),
         shapes=shapes,
         plot_bgcolor="#f8fafc",
@@ -3630,6 +4276,7 @@ def render_plots():
             shade_count=2,
             x_values_for_limits=calc_left_pressure + calc_right_pressure,
             show_legend=True,
+            legend_corner="upper_left",
         ),
         plot_profile_interactive(
             deflection_series,
@@ -4002,6 +4649,51 @@ def _animation_solver_water_levels(
     return zL, zR
 
 
+
+def total_pressure_animation_series(result: Any) -> list[tuple[str, list[float]]]:
+    """Pressure traces for animation pressure charts, including limiting envelopes.
+
+    Uses the same sign convention and dashed state styling as the main
+    Total horizontal pressure engineering plot.
+    """
+    def arr(name):
+        return list(getattr(result, name, []) or [])
+
+    def safe_float(x):
+        try:
+            xf = float(x)
+            return xf if math.isfinite(xf) else float("nan")
+        except Exception:
+            return float("nan")
+
+    def neg(values):
+        return [-safe_float(x) for x in list(values or [])]
+
+    def pos(values):
+        return [safe_float(x) for x in list(values or [])]
+
+    def has_values(values):
+        return any(math.isfinite(safe_float(x)) for x in list(values or []))
+
+    series = [
+        ("Calculated left", neg(arr("p_left"))),
+        ("Calculated right", pos(arr("p_right"))),
+    ]
+
+    for label, left_attr, right_attr in [
+        ("At-rest state", "sigma_left_OE", "sigma_right_OE"),
+        ("Passive state", "sigma_left_PE", "sigma_right_PE"),
+        ("Active state", "sigma_left_AE", "sigma_right_AE"),
+    ]:
+        left_values = neg(arr(left_attr))
+        right_values = pos(arr(right_attr))
+        if has_values(left_values):
+            series.append((label, left_values))
+        if has_values(right_values):
+            series.append((f"{label} ", right_values))
+
+    return series
+
 def plot_water_animation_frame(
     result: Any,
     model: Any,
@@ -4035,12 +4727,16 @@ def plot_water_animation_frame(
         return out
 
     if quantity == "pressure":
+        pressure_series = total_pressure_animation_series(result)
         fig = plot_profile_interactive(
-            [("Left", neg(arr("p_left"))), ("Right", pos(arr("p_right")))],
+            pressure_series,
             z,
             "Pressure (kPa)",
             "Total horizontal pressure",
             shade=True,
+            shade_count=2,
+            show_legend=True,
+            legend_corner="upper_left",
         )
     elif quantity == "deflection":
         fig = plot_profile_interactive(
@@ -4901,7 +5597,8 @@ def stage_chart_traces(result: Any, quantity: str):
             except Exception: out.append(float("nan"))
         return out
     if quantity == "pressure":
-        return [("Left", safe(arr("p_left"), sign=-1.0), "kPa"), ("Right", safe(arr("p_right")), "kPa")], "Total horizontal pressure"
+        pressure_series = total_pressure_animation_series(result)
+        return [(name, values, "kPa") for name, values in pressure_series], "Total horizontal pressure"
     if quantity == "deflection":
         return [("Δx", safe(arr("deflection"), scale=1000.0, sign=-1.0), "mm")], "Deflection"
     if quantity == "moment":
@@ -4969,9 +5666,48 @@ def plot_stage_animation_frame(item: dict[str, Any], quantity: str, x_range: tup
     # Chart panel
     zres = list(getattr(result, "z", []) or [])
     allx = []
-    for name, values, unit in traces:
+    for i, (name, values, unit) in enumerate(traces):
         allx.extend([v for v in values if isinstance(v, (int, float)) and math.isfinite(float(v))])
-        fig.add_trace(go.Scatter(x=values, y=zres, mode="lines", name=name, line=dict(width=2)), row=1, col=2)
+        if quantity == "pressure" and i < 2:
+            xs, zs = _finite_pairs(values, zres)
+            if xs:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[0.0] * len(zs) + xs[::-1],
+                        y=zs + zs[::-1],
+                        fill="toself",
+                        fillcolor="rgba(90, 90, 90, 0.16)",
+                        line=dict(width=0),
+                        hoverinfo="skip",
+                        showlegend=False,
+                        name=f"{name} shaded area",
+                    ),
+                    row=1,
+                    col=2,
+                )
+        color, dash, width = _plotly_style(name)
+        legend_name = str(name).strip()
+        show_this_legend = bool(quantity == "pressure" and i >= 2)
+        if quantity == "pressure" and i >= 2:
+            existing_names = {
+                tr.name for tr in fig.data
+                if getattr(tr, "showlegend", False)
+            }
+            if legend_name in existing_names:
+                show_this_legend = False
+        fig.add_trace(
+            go.Scatter(
+                x=values,
+                y=zres,
+                mode="lines",
+                name=legend_name,
+                showlegend=show_this_legend,
+                legendgroup=legend_name,
+                line=dict(color=color, dash=dash, width=width),
+            ),
+            row=1,
+            col=2,
+        )
     if x_range is None:
         if allx:
             m = max(abs(min(allx)), abs(max(allx)), 1.0)
@@ -4984,19 +5720,129 @@ def plot_stage_animation_frame(item: dict[str, Any], quantity: str, x_range: tup
     fig.update_xaxes(title_text=unit, range=list(x_range), row=1, col=2, zeroline=True, zerolinecolor="rgba(0,0,0,0.35)")
     fig.update_yaxes(title_text="z (m)", range=[H_R, 0], row=1, col=2)
     fig.update_layout(template="plotly_white", height=640, margin=dict(l=35, r=20, t=78, b=80), title=dict(text=f"Stages animation — {item['label']} | z={z_stage:.3f} m | active supports={len(active_supports)} | q_L={'on' if item.get('qL_active') else 'off'} | q_R={'on' if item.get('qR_active') else 'off'} | status={getattr(result, 'status', '')}", x=0.5))
+    if quantity == "pressure":
+        fig.update_layout(
+            showlegend=True,
+            legend=dict(
+                x=0.47,
+                y=0.96,
+                xanchor="left",
+                yanchor="top",
+                bgcolor="rgba(255,255,255,0.85)",
+                bordercolor="rgba(203,213,225,0.95)",
+                borderwidth=1,
+                font=dict(size=11),
+            ),
+        )
     return fig
 
 
 def stage_animation_x_range(items: list[dict[str, Any]], quantity: str) -> tuple[float, float]:
     vals=[]
-    for item in items:
+    for item in list(items or []):
         traces, _ = stage_chart_traces(item.get("result"), quantity)
         for _, xs, _ in traces:
             vals.extend([float(v) for v in xs if isinstance(v, (int,float)) and math.isfinite(float(v))])
     if not vals:
         return (-1.0, 1.0)
-    m=max(abs(min(vals)), abs(max(vals)), 1.0)
-    return (-1.15*m, 1.15*m)
+    xmin, xmax = _auto_xlim([vals], pad_frac=0.14)
+    xmin = min(float(xmin), 0.0)
+    xmax = max(float(xmax), 0.0)
+    if abs(xmax - xmin) < 1.0e-12:
+        base = max(abs(xmin), abs(xmax), 1.0)
+        xmin, xmax = -base, base
+    return (float(xmin), float(xmax))
+
+
+def smart_stage_animation_x_range(stored_items, quantity, last_result=None):
+    """
+    Smart x-range for stage animation.
+
+    It derives x_min/x_max from the actual plotted MAIN traces only.
+    Dashed limit/reference curves such as At-rest, Active and Passive
+    are deliberately ignored.
+    """
+
+    xs = []
+
+    skip_words = (
+        "at-rest",
+        "at rest",
+        "active",
+        "passive",
+        "limit",
+        "k0",
+        "ka",
+        "kp",
+    )
+
+    def _is_reference_trace(trace):
+        name = str(getattr(trace, "name", "") or "").lower()
+
+        if any(w in name for w in skip_words):
+            return True
+
+        line = getattr(trace, "line", None)
+        dash = getattr(line, "dash", None) if line is not None else None
+
+        if dash not in (None, "", "solid"):
+            return True
+
+        return False
+
+    for item in stored_items or []:
+        try:
+            fig_tmp = plot_stage_animation_frame(
+                item,
+                quantity,
+                (-1.0e12, 1.0e12),
+            )
+        except Exception:
+            continue
+
+        for tr in fig_tmp.data:
+            if _is_reference_trace(tr):
+                continue
+
+            x = getattr(tr, "x", None)
+            if x is None:
+                continue
+
+            try:
+                arr = np.asarray(x, dtype=float).ravel()
+                arr = arr[np.isfinite(arr)]
+                if arr.size:
+                    xs.extend(arr.tolist())
+            except Exception:
+                continue
+
+    vals = np.asarray(xs, dtype=float)
+    vals = vals[np.isfinite(vals)]
+
+    if vals.size == 0:
+        return -1.0, 1.0
+
+    xmin = float(np.nanmin(vals))
+    xmax = float(np.nanmax(vals))
+
+    if abs(xmax - xmin) < 1e-12:
+        pad = max(1.0, abs(xmax) * 0.25)
+        xmin -= pad
+        xmax += pad
+    else:
+        pad = 0.15 * (xmax - xmin)
+        xmin -= pad
+        xmax += pad
+
+    xmin = min(xmin, 0.0)
+    xmax = max(xmax, 0.0)
+
+    return xmin, xmax
+
+
+def mark_stage_animation_auto_x() -> None:
+    """Request smart x-limits after a stage-animation diagram change."""
+    st.session_state.stage_anim_auto_x_pending = True
 
 
 def render_stages_and_reinforcement(model_preview: Any):
@@ -5009,7 +5855,9 @@ def render_stages_and_reinforcement(model_preview: Any):
     with left:
         st.markdown("#### Excavation stages")
         st.caption(f"Total excavation depth: z_ex = H_R − H_L = {z_ex:.4g} m")
+        st.markdown('<div class="cut-visible-field-label">Number of main excavation stages</div>', unsafe_allow_html=True)
         n = st.number_input("Number of main excavation stages", min_value=1, max_value=30, step=1, key="n_excavation_stages", help="Number of principal excavation levels after Stage 0. Stage 0 is no excavation/no supports; the final stage is locked to z_ex = H_R − H_L.")
+        st.markdown('<div class="cut-visible-field-label">Intermediate excavation drops between main stages</div>', unsafe_allow_html=True)
         st.number_input("Intermediate excavation drops between main stages", min_value=0, max_value=20, step=1, key="intermediate_stage_drops", help="Optional lowering steps inserted before each main stage. Example: 4 creates four drops before Stage i, with only supports 1..i−1 active until Stage i is reached.")
         st.markdown("#### Surcharge staging")
         qR_options = [f"Stage {i}" for i in range(0, int(n) + 1)] + [f"Stage {int(n)+1} (after final)"]
@@ -5023,6 +5871,7 @@ def render_stages_and_reinforcement(model_preview: Any):
         stage_df = normalize_stage_df(st.session_state.get("stages_df"), H_R, H_L, int(n))
         locked = stage_df.copy()
         locked["Locked final"] = [False] * (len(locked)-1) + [True]
+        locked = _cut_editor_text_df(locked, exclude_cols=["Stage", "Locked final"])
         edited = st.data_editor(
             locked,
             hide_index=True,
@@ -5032,7 +5881,7 @@ def render_stages_and_reinforcement(model_preview: Any):
             height=min(420, 42 + 36 * len(locked)),
             disabled=["Stage", "Locked final"],
             column_config={
-                "z excavation level (m)": st.column_config.NumberColumn("z excavation level (m)", min_value=0.0, max_value=float(z_ex), format="%.4g"),
+                "z excavation level (m)": st.column_config.TextColumn("z excavation level (m)", width="medium"),
                 "Locked final": st.column_config.CheckboxColumn("final", width="small"),
             },
         )
@@ -5046,63 +5895,417 @@ def render_stages_and_reinforcement(model_preview: Any):
 
 def render_stages_animation():
     st.markdown('<div class="cut-section-title">Stages animation</div>', unsafe_allow_html=True)
+
     base_model = build_model()
     H_R = float(base_model.geometry.H_R)
     H_L = float(base_model.geometry.H_L)
     z_ex = max(0.0, H_R - H_L)
+
     n = max(1, int(st.session_state.get("n_excavation_stages", 1)))
     n_inter = max(0, int(st.session_state.get("intermediate_stage_drops", 0)))
-    stage_df = normalize_stage_df(st.session_state.get("stages_df"), H_R, H_L, n)
+
+    stage_df = normalize_stage_df(
+        st.session_state.get("stages_df"),
+        H_R,
+        H_L,
+        n,
+    )
     st.session_state.stages_df = stage_df
-    quantity_name = st.selectbox("Diagram", list(WATER_PLOT_OPTIONS.keys()), key="stage_anim_plot_type")
-    speed_ms = st.number_input("Frame duration (ms)", min_value=100, max_value=5000, step=100, key="stage_anim_speed_ms", help="Delay between stage-animation frames. Larger values make the animation slower.")
-    st.caption("The geometry animation and the selected diagram use the same frames and the same slider. Intermediate drops keep the support set of the preceding main stage.")
-    if st.button("Run stages animation", key="run_stages_animation", type="primary", use_container_width=True):
-        qL_apply_stage = _stage_load_index_from_text(st.session_state.get("stage_q_L_apply", "Stage N+1 (after final)"), n, default=n+1)
-        qR_apply_stage = _stage_load_index_from_text(st.session_state.get("stage_q_R_apply", "Stage 0"), n, default=0)
-        seq = build_stage_sequence(stage_df["z excavation level (m)"].tolist(), n_inter, qL_apply_stage=qL_apply_stage, qR_apply_stage=qR_apply_stage)
-        progress = st.progress(0.0, text="Running staged excavation sequence...")
-        stored=[]
-        all_supports = sorted(list(getattr(base_model, "reinforcement_supports", []) or []), key=lambda s: float(s.get("z", 0.0) or 0.0))
-        oldN = None
+
+    stored_items_for_range = list(
+        st.session_state.get("stage_anim_results", []) or []
+    )
+
+    selected_quantity_for_range = WATER_PLOT_OPTIONS.get(
+        st.session_state.get(
+            "stage_anim_plot_type",
+            "Total horizontal pressure",
+        ),
+        "pressure",
+    )
+
+    # ==========================================================
+    # SMART AUTO XRANGE
+    # ==========================================================
+    if (
+        st.session_state.get("stage_anim_x_min") is None
+        or st.session_state.get("stage_anim_x_max") is None
+        or bool(st.session_state.get("stage_anim_auto_x_pending", False))
+    ):
+
+        auto_x_min, auto_x_max = smart_stage_animation_x_range(
+            stored_items_for_range,
+            selected_quantity_for_range,
+            st.session_state.get("last_result"),
+        )
+
+        st.session_state.stage_anim_x_min = auto_x_min
+        st.session_state.stage_anim_x_max = auto_x_max
+
+        # IMPORTANT:
+        # initialize widget values ONLY BEFORE widget creation
+        if "ui_stage_anim_x_min" not in st.session_state:
+            st.session_state.ui_stage_anim_x_min = auto_x_min
+
+        if "ui_stage_anim_x_max" not in st.session_state:
+            st.session_state.ui_stage_anim_x_max = auto_x_max
+
+        st.session_state.stage_anim_auto_x_pending = False
+
+    # ==========================================================
+    # HEADERS
+    # ==========================================================
+    h1, h2, h3, h4 = st.columns(
+        [1.30, 0.85, 0.85, 2.5],
+        gap="small",
+    )
+
+    with h1:
+        st.markdown(
+            "<div class='input-grid-header'>Diagram</div>",
+            unsafe_allow_html=True,
+        )
+
+    with h2:
+        st.markdown(
+            "<div class='input-grid-header'>Frame duration (ms)</div>",
+            unsafe_allow_html=True,
+        )
+
+    with h3:
+        st.markdown(
+            "<div class='input-grid-header'>x_min</div>",
+            unsafe_allow_html=True,
+        )
+
+    with h4:
+        st.markdown(
+            "<div class='input-grid-header'>x_max / notes</div>",
+            unsafe_allow_html=True,
+        )
+
+    # ==========================================================
+    # CONTROLS
+    # ==========================================================
+    c1, c2, c3, c4 = st.columns(
+        [1.30, 0.85, 0.85, 2.5],
+        gap="small",
+    )
+
+    with c1:
+        quantity_name = st.selectbox(
+            "Diagram",
+            list(WATER_PLOT_OPTIONS.keys()),
+            key="stage_anim_plot_type",
+            label_visibility="collapsed",
+            on_change=mark_stage_animation_auto_x,
+        )
+
+    with c2:
+        speed_ms = st.number_input(
+            "Frame duration (ms)",
+            min_value=100,
+            max_value=5000,
+            step=100,
+            key="stage_anim_speed_ms",
+            label_visibility="collapsed",
+            help="Delay between stage-animation frames. Larger values make the animation slower.",
+        )
+
+    with c3:
+        x_min = st.number_input(
+            "x_min",
+            step=1.0,
+            format="%.4g",
+            key="ui_stage_anim_x_min",
+            label_visibility="collapsed",
+            help="Manual left plotting limit.",
+        )
+
+    with c4:
+        x_max = st.number_input(
+            "x_max",
+            step=1.0,
+            format="%.4g",
+            key="ui_stage_anim_x_max",
+            label_visibility="collapsed",
+            help="Manual right plotting limit.",
+        )
+
+        st.caption(
+            "x_min/x_max are selected intelligently whenever the diagram changes; "
+            "they can still be adjusted manually. "
+            "Run once for the selected excavation-stage sequence, "
+            "then use the Diagram dropdown without rerunning."
+        )
+
+    # ==========================================================
+    # SAVE MANUAL VALUES
+    # ==========================================================
+    try:
+        st.session_state.stage_anim_x_min = float(x_min)
+        st.session_state.stage_anim_x_max = float(x_max)
+    except Exception:
+        pass
+
+    if float(x_min) >= float(x_max):
+        st.warning("For stage animation, use x_min < x_max.")
+
+    st.caption(
+        "The geometry animation and the selected diagram use the same frames "
+        "and the same slider. Intermediate drops keep the support set "
+        "of the preceding main stage."
+    )
+
+    # ==========================================================
+    # RUN BUTTON
+    # ==========================================================
+    if st.button(
+        "Run stages animation",
+        key="run_stages_animation",
+        type="primary",
+        use_container_width=True,
+    ):
+
+        qL_apply_stage = _stage_load_index_from_text(
+            st.session_state.get(
+                "stage_q_L_apply",
+                "Stage N+1 (after final)",
+            ),
+            n,
+            default=n + 1,
+        )
+
+        qR_apply_stage = _stage_load_index_from_text(
+            st.session_state.get(
+                "stage_q_R_apply",
+                "Stage 0",
+            ),
+            n,
+            default=0,
+        )
+
+        seq = build_stage_sequence(
+            stage_df["z excavation level (m)"].tolist(),
+            n_inter,
+            qL_apply_stage=qL_apply_stage,
+            qR_apply_stage=qR_apply_stage,
+        )
+
+        progress = st.progress(
+            0.0,
+            text="Running staged excavation sequence...",
+        )
+
+        stored = []
+
+        all_supports = sorted(
+            list(getattr(base_model, "reinforcement_supports", []) or []),
+            key=lambda s: float(s.get("z", 0.0) or 0.0),
+        )
+
         try:
             for i, row in enumerate(seq):
-                progress.progress((i+1)/max(1,len(seq)), text=f"{row['label']} ({i+1}/{len(seq)})")
-                model_i = model_for_excavation_stage(base_model, float(row["z"]), int(row["active_supports"]), bool(row.get("qL_active", True)), bool(row.get("qR_active", True)))
+
+                progress.progress(
+                    (i + 1) / max(1, len(seq)),
+                    text=f"{row['label']} ({i+1}/{len(seq)})",
+                )
+
+                model_i = model_for_excavation_stage(
+                    base_model,
+                    float(row["z"]),
+                    int(row["active_supports"]),
+                    bool(row.get("qL_active", True)),
+                    bool(row.get("qR_active", True)),
+                )
+
                 result_i = cached_solve(model_i)
-                stored.append({**row, "step": i+1, "model": model_i, "result": result_i, "all_supports": all_supports, "stage_depths": stage_df["z excavation level (m)"].tolist()})
+
+                stored.append({
+                    **row,
+                    "step": i + 1,
+                    "model": model_i,
+                    "result": result_i,
+                    "all_supports": all_supports,
+                    "stage_depths": stage_df["z excavation level (m)"].tolist(),
+                })
+
         finally:
             progress.empty()
-        st.session_state.stage_anim_results = stored
-    stored = list(st.session_state.get("stage_anim_results", []) or [])
-    if not stored:
-        st.info("Press 'Run stages animation' to solve every main stage and every intermediate substage.")
-        return
-    quantity = WATER_PLOT_OPTIONS.get(quantity_name, "pressure")
-    x_range = stage_animation_x_range(stored, quantity)
-    frames=[]
-    for item in stored:
-        fig_i = plot_stage_animation_frame(item, quantity, x_range)
-        frames.append(go.Frame(name=str(item["step"]), data=list(fig_i.data), layout=go.Layout(shapes=fig_i.layout.shapes, annotations=fig_i.layout.annotations, title=fig_i.layout.title)))
-    fig = plot_stage_animation_frame(stored[0], quantity, x_range)
-    fig.frames = frames
-    fig.update_layout(
-        updatemenus=[dict(type="buttons", showactive=False, x=0.02, y=-0.12, xanchor="left", yanchor="top", buttons=[
-            dict(label="Play", method="animate", args=[None, {"frame": {"duration": int(speed_ms), "redraw": True}, "transition": {"duration": 0}, "fromcurrent": True}]),
-            dict(label="Pause", method="animate", args=[[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]),
-        ])],
-        sliders=[dict(active=0, x=0.18, y=-0.10, len=0.78, currentvalue=dict(prefix="Frame "), steps=[
-            dict(label=str(item["step"]), method="animate", args=[[str(item["step"])], {"frame": {"duration": 0, "redraw": True}, "transition": {"duration": 0}, "mode": "immediate"}]) for item in stored
-        ])],
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    rows=[]
-    for item in stored:
-        maxv, unit = max_response_for_quantity(item["result"], quantity)
-        rows.append({"Frame": item["step"], "Stage/substage": item["label"], "z excavation (m)": item["z"], "Active supports": item["active_supports"], "Status": getattr(item["result"], "status", ""), f"Max {quantity} ({unit})": maxv})
-    st.markdown("#### Stage/substage results")
-    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=min(520, 42+35*len(rows)))
 
+        st.session_state.stage_anim_results = stored
+
+        auto_x_min, auto_x_max = smart_stage_animation_x_range(
+            stored,
+            WATER_PLOT_OPTIONS.get(quantity_name, "pressure"),
+            st.session_state.get("last_result"),
+        )
+
+        st.session_state.stage_anim_x_min = auto_x_min
+        st.session_state.stage_anim_x_max = auto_x_max
+
+        # IMPORTANT:
+        # reset widget state SAFELY
+        st.session_state.pop("ui_stage_anim_x_min", None)
+        st.session_state.pop("ui_stage_anim_x_max", None)
+
+        st.session_state.ui_stage_anim_x_min = auto_x_min
+        st.session_state.ui_stage_anim_x_max = auto_x_max
+
+    # ==========================================================
+    # RESULTS
+    # ==========================================================
+    stored = list(
+        st.session_state.get("stage_anim_results", []) or []
+    )
+
+    if not stored:
+        st.info(
+            "Press 'Run stages animation' to solve every main stage "
+            "and every intermediate substage."
+        )
+        return
+
+    quantity = WATER_PLOT_OPTIONS.get(
+        quantity_name,
+        "pressure",
+    )
+
+    x_range = (
+        float(st.session_state.get("stage_anim_x_min", -1.0)),
+        float(st.session_state.get("stage_anim_x_max", 1.0)),
+    )
+
+    frames = []
+
+    for item in stored:
+
+        fig_i = plot_stage_animation_frame(
+            item,
+            quantity,
+            x_range,
+        )
+
+        frames.append(
+            go.Frame(
+                name=str(item["step"]),
+                data=list(fig_i.data),
+                layout=go.Layout(
+                    shapes=fig_i.layout.shapes,
+                    annotations=fig_i.layout.annotations,
+                    title=fig_i.layout.title,
+                ),
+            )
+        )
+
+    fig = plot_stage_animation_frame(
+        stored[0],
+        quantity,
+        x_range,
+    )
+
+    fig.frames = frames
+
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                type="buttons",
+                showactive=False,
+                x=0.02,
+                y=-0.12,
+                xanchor="left",
+                yanchor="top",
+                buttons=[
+                    dict(
+                        label="Play",
+                        method="animate",
+                        args=[
+                            None,
+                            {
+                                "frame": {
+                                    "duration": int(speed_ms),
+                                    "redraw": True,
+                                },
+                                "transition": {"duration": 0},
+                                "fromcurrent": True,
+                            },
+                        ],
+                    ),
+                    dict(
+                        label="Pause",
+                        method="animate",
+                        args=[
+                            [None],
+                            {
+                                "frame": {
+                                    "duration": 0,
+                                    "redraw": False,
+                                },
+                                "mode": "immediate",
+                            },
+                        ],
+                    ),
+                ],
+            )
+        ],
+        sliders=[
+            dict(
+                active=0,
+                x=0.18,
+                y=-0.10,
+                len=0.78,
+                currentvalue=dict(prefix="Frame "),
+                steps=[
+                    dict(
+                        label=str(item["step"]),
+                        method="animate",
+                        args=[
+                            [str(item["step"])],
+                            {
+                                "frame": {
+                                    "duration": 0,
+                                    "redraw": True,
+                                },
+                                "transition": {"duration": 0},
+                                "mode": "immediate",
+                            },
+                        ],
+                    )
+                    for item in stored
+                ],
+            )
+        ],
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    rows = []
+
+    for item in stored:
+
+        maxv, unit = max_response_for_quantity(
+            item["result"],
+            quantity,
+        )
+
+        rows.append({
+            "Frame": item["step"],
+            "Stage/substage": item["label"],
+            "z excavation (m)": item["z"],
+            "Active supports": item["active_supports"],
+            "Status": getattr(item["result"], "status", ""),
+            f"Max {quantity} ({unit})": maxv,
+        })
+
+    st.markdown("#### Stage/substage results")
+
+    st.dataframe(
+        pd.DataFrame(rows),
+        use_container_width=True,
+        hide_index=True,
+        height=min(520, 42 + 35 * len(rows)),
+    )
 
 def render_query():
     st.markdown('<div class="cut-section-title">Point query</div>', unsafe_allow_html=True)
@@ -5199,3 +6402,237 @@ elif page == "Advanced diagnostics":
     render_advanced()
 
 st.caption("Educational / research software — no warranty. Results must be independently checked by a qualified engineer before design use.")
+
+# v7.4 FIX8: definitive mobile table polishing.
+# The previous mobile CSS made the row structure stable but still allowed header
+# text to collide with the first input row on narrow screens.  This final layer
+# deliberately makes the engineering rows wider and gives header rows real
+# vertical clearance.  Horizontal scrolling remains only at expander-body level.
+st.markdown(
+    """
+<style>
+@media(max-width:900px){
+    /* Keep Home/About as two equal buttons in one row. */
+    .header-actions{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:center!important;
+        justify-content:flex-start!important;
+        gap:.50rem!important;
+        width:100%!important;
+        margin:.45rem 0 .70rem 0!important;
+    }
+    .home-link, .about-details summary{
+        flex:0 0 122px!important;
+        width:122px!important;
+        min-width:122px!important;
+        max-width:122px!important;
+        height:42px!important;
+        box-sizing:border-box!important;
+    }
+
+    /* One scroll area only: the expander body. */
+    div[data-testid="stExpander"] details > div{
+        overflow-x:auto!important;
+        overflow-y:visible!important;
+        -webkit-overflow-scrolling:touch!important;
+        padding:.95rem .90rem .78rem .90rem!important;
+    }
+
+    /* Streamlit column rows behave like fixed-width table rows. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:stretch!important;
+        justify-content:flex-start!important;
+        gap:.34rem!important;
+        width:max-content!important;
+        min-width:max-content!important;
+        max-width:none!important;
+        overflow:visible!important;
+        margin:0!important;
+        padding:0!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div,
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+        flex:0 0 auto!important;
+        min-width:0!important;
+        max-width:none!important;
+        padding:0!important;
+        margin:0!important;
+        overflow:visible!important;
+    }
+
+    /* Rows with exactly 3 columns: Parameter | Left | Right. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))) > div:nth-child(1){
+        flex-basis:145px!important; width:145px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))) > div:nth-child(2),
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(3)):not(:has(> div:nth-child(4))) > div:nth-child(3){
+        flex-basis:225px!important; width:225px!important;
+    }
+
+    /* Rows with exactly 2 columns, mainly EI wall stiffness. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(2)):not(:has(> div:nth-child(3))) > div:nth-child(1){
+        flex-basis:150px!important; width:150px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(2)):not(:has(> div:nth-child(3))) > div:nth-child(2){
+        flex-basis:220px!important; width:220px!important;
+    }
+
+    /* Rows with exactly 6 columns: Global parameters.  Wider columns prevent
+       the labels from being clipped/overprinted. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(6)):not(:has(> div:nth-child(7))) > div{
+        flex-basis:145px!important; width:145px!important;
+    }
+
+    /* Numerical/animation rows remain compact but readable. */
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(4)):not(:has(> div:nth-child(5))) > div{
+        flex-basis:170px!important; width:170px!important;
+    }
+    div[data-testid="stExpander"] div[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)):not(:has(> div:nth-child(6))) > div{
+        flex-basis:160px!important; width:160px!important;
+    }
+
+    /* Header rows need real clearance before the first data row. */
+    div[data-testid="stHorizontalBlock"]:has(.input-grid-header){
+        margin-bottom:.42rem!important;
+        align-items:flex-end!important;
+    }
+    .stMarkdown:has(.input-grid-header),
+    .stMarkdown:has(.input-grid-label),
+    .stMarkdown:has(.input-grid-value){
+        margin:0!important;
+        padding:0!important;
+        overflow:visible!important;
+    }
+    .stMarkdown:has(.input-grid-header) p,
+    .stMarkdown:has(.input-grid-label) p,
+    .stMarkdown:has(.input-grid-value) p{
+        margin:0!important;
+        padding:0!important;
+    }
+
+    .input-grid-header{
+        min-height:1.95rem!important;
+        height:1.95rem!important;
+        line-height:1.08!important;
+        padding:0 .18rem .22rem .18rem!important;
+        display:flex!important;
+        align-items:flex-end!important;
+        border-bottom:1px solid #cfd8e3!important;
+        font-size:.72rem!important;
+        font-weight:750!important;
+        white-space:normal!important;
+        overflow:visible!important;
+        word-break:normal!important;
+    }
+    .input-grid-label,
+    .input-grid-value{
+        min-height:2.04rem!important;
+        height:2.04rem!important;
+        line-height:1.08!important;
+        padding:.05rem .18rem!important;
+        display:flex!important;
+        align-items:center!important;
+        font-size:.72rem!important;
+        font-weight:700!important;
+        white-space:nowrap!important;
+        overflow:visible!important;
+    }
+    .input-grid-value{font-weight:500!important;}
+
+    div[data-testid="stNumberInput"],
+    div[data-testid="stSelectbox"],
+    div[data-testid="stCheckbox"]{
+        margin:0!important;
+        padding:0!important;
+        width:100%!important;
+        max-width:none!important;
+        overflow:visible!important;
+    }
+    div[data-testid="stNumberInput"] label,
+    div[data-testid="stSelectbox"] label{
+        display:none!important;
+        height:0!important;
+        min-height:0!important;
+        margin:0!important;
+        padding:0!important;
+        visibility:hidden!important;
+    }
+    div[data-testid="stNumberInput"] input{
+        height:1.96rem!important;
+        min-height:1.96rem!important;
+        padding:.05rem .30rem!important;
+        font-size:.72rem!important;
+        border-radius:.46rem!important;
+    }
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div{
+        min-height:2.00rem!important;
+        height:2.00rem!important;
+        font-size:.76rem!important;
+        border-radius:.50rem!important;
+    }
+
+    h4{
+        margin-top:.76rem!important;
+        margin-bottom:.42rem!important;
+        font-size:1.08rem!important;
+        line-height:1.15!important;
+    }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
+# v7.4 FIX10: colored navigation/buttons and left-aligned native tables.
+st.markdown("""
+<style>
+/* Header action buttons: same size and same colour. */
+.header-actions{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:.55rem!important;align-items:center!important;}
+.home-link,.about-details summary{
+    width:128px!important;min-width:128px!important;max-width:128px!important;height:44px!important;
+    background:linear-gradient(180deg,#eaf4ff,#dcecfb)!important;
+    border:1px solid #7facd8!important;color:#123d67!important;
+    border-radius:15px!important;box-shadow:0 5px 14px rgba(20,65,110,.12)!important;
+    font-weight:800!important;justify-content:center!important;
+}
+.home-link:hover,.about-details summary:hover{background:linear-gradient(180deg,#dcecff,#cfe3f8)!important;border-color:#5d94c8!important;}
+
+/* Previous / Next buttons: common colour. */
+div[data-testid="stButton"] button[kind="secondary"]{
+    background:linear-gradient(180deg,#e7f0fb,#d9e8f7)!important;
+    border:1px solid #8eb3d9!important;color:#173f6b!important;
+    border-radius:13px!important;font-weight:700!important;
+}
+div[data-testid="stButton"] button[kind="secondary"]:hover{
+    background:linear-gradient(180deg,#dcecff,#cce0f5)!important;border-color:#5e95c9!important;
+}
+
+/* Section dropdown: distinct but harmonious colour. */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div{
+    background:linear-gradient(180deg,#f3f7fb,#e6eef7)!important;
+    border:1px solid #9eb8d2!important;border-radius:13px!important;color:#223044!important;
+}
+
+/* Native editable tables: left-align every header and cell. */
+div[data-testid="stDataFrame"] [role="columnheader"],
+div[data-testid="stDataFrame"] [role="gridcell"],
+div[data-testid="stDataFrame"] [data-testid="stDataFrameCell"]{
+    text-align:left!important;justify-content:flex-start!important;align-items:center!important;
+}
+div[data-testid="stDataFrame"] canvas{image-rendering:auto;}
+
+/* Data-editor toolbar/menu icons are not needed for these engineering input tables. */
+div[data-testid="stDataFrame"] [data-testid="stDataFrameColumnHeaderMenu"]{display:none!important;}
+
+@media(max-width:900px){
+  .header-actions{gap:.45rem!important;margin:.45rem 0 .65rem 0!important;}
+  .home-link,.about-details summary{width:116px!important;min-width:116px!important;max-width:116px!important;height:42px!important;}
+}
+</style>
+""", unsafe_allow_html=True)

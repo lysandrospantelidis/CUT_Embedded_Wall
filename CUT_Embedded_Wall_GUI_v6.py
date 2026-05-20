@@ -4935,50 +4935,154 @@ class App(tk.Tk):
         self.water_anim_status.set(f"Water-level animation ready: {len(items)} stored stages.")
 
     def _plot_quantity_on_axis(self, ax, result, model, quantity, zL, zR, xmin, xmax):
-        z=list(getattr(result,"z",[]) or [])
-        def arr(name): return [float(x) for x in list(getattr(result,name,[]) or [])]
-        series=[]; xlabel=""
-        if quantity=="pressure": series=[("Left",[-x for x in arr("p_left")]),("Right",arr("p_right"))]; xlabel="Pressure (kPa)"
-        elif quantity=="deflection": series=[("Δx",[-1000*x for x in arr("deflection")])]; xlabel="Δx (mm)"
-        elif quantity=="moment": series=[("M",arr("moment"))]; xlabel="Moment (kNm/m)"
-        elif quantity=="shear": series=[("V",arr("shear"))]; xlabel="Shear (kN/m)"
-        elif quantity=="rotation": series=[("rotation",arr("rotation"))]; xlabel="Rotation (deg)"
-        elif quantity=="water": series=[("u_L",[-x for x in arr("u_left")]),("u_R",arr("u_right"))]; xlabel="u (kPa)"
-        elif quantity=="effective": series=[("σh,L",[-x for x in arr("sigma_left_eff")]),("σh,R",arr("sigma_right_eff"))]; xlabel="σ'h (kPa)"
-        else: series=[("p_net",arr("net_pressure"))]; xlabel="p_net (kPa)"
-        H_R=float(model.geometry.H_R); H_L=float(model.geometry.H_L); z_left=H_R-H_L
-        ax.axvspan(xmin,0, ymin=0, ymax=1, color="#e0f2fe", alpha=0.18)
-        ax.axvspan(0,xmax, ymin=0, ymax=1, color="#e0f2fe", alpha=0.10)
-        ax.fill_betweenx([max(float(zL),z_left),H_R], xmin, 0.0, color="#38bdf8", alpha=0.16)
-        ax.fill_betweenx([max(float(zR),0.0),H_R], 0.0, xmax, color="#38bdf8", alpha=0.16)
-        ax.hlines(zL,xmin,0.0,colors="#2563eb",linestyles="--",linewidth=1.5)
-        ax.hlines(zR,0.0,xmax,colors="#2563eb",linestyles="--",linewidth=1.5)
-        ax.hlines(z_left,xmin,0.0,colors="saddlebrown",linewidth=1.4); ax.hlines(0.0,0.0,xmax,colors="saddlebrown",linewidth=1.4)
-        ax.axvline(0.0,color="black",linewidth=1.2)
+        z = list(getattr(result, "z", []) or [])
+
+        def arr(name):
+            out = []
+            for x in list(getattr(result, name, []) or []):
+                try:
+                    xf = float(x)
+                    out.append(xf if math.isfinite(xf) else float("nan"))
+                except Exception:
+                    out.append(float("nan"))
+            return out
+
+        def has_values(values):
+            for v in list(values or []):
+                try:
+                    if math.isfinite(float(v)):
+                        return True
+                except Exception:
+                    pass
+            return False
+
+        def neg(values):
+            return [-float(x) if _is_finite(x) else float("nan") for x in list(values or [])]
+
+        def pos(values):
+            return [float(x) if _is_finite(x) else float("nan") for x in list(values or [])]
+
+        # series records: (trace_name, x_values, side, legend_label)
+        series = []
+        xlabel = ""
+
+        if quantity == "pressure":
+            series = [
+                ("Calculated left", neg(arr("p_left")), "left", "Calculated left"),
+                ("Calculated right", pos(arr("p_right")), "right", "Calculated right"),
+            ]
+
+            # Add the same limiting earth-pressure envelopes used in the main
+            # Total horizontal pressure plot and in the Streamlit animation tabs.
+            # Left-side values are mirrored negative; right-side values are positive.
+            for label, left_attr, right_attr in [
+                ("At-rest state", "sigma_left_OE", "sigma_right_OE"),
+                ("Passive state", "sigma_left_PE", "sigma_right_PE"),
+                ("Active state", "sigma_left_AE", "sigma_right_AE"),
+            ]:
+                left_values = neg(arr(left_attr))
+                right_values = pos(arr(right_attr))
+
+                if has_values(left_values):
+                    series.append((label, left_values, "left", label))
+
+                if has_values(right_values):
+                    # Same legend label; _safe_legend removes duplicates while both
+                    # left and right curves remain plotted.
+                    series.append((label, right_values, "right", label))
+
+            xlabel = "Pressure (kPa)"
+
+        elif quantity == "deflection":
+            series = [("Δx", [-1000 * x for x in arr("deflection")], "wall", "Δx")]
+            xlabel = "Δx (mm)"
+        elif quantity == "moment":
+            series = [("M", arr("moment"), "wall", "M")]
+            xlabel = "Moment (kNm/m)"
+        elif quantity == "shear":
+            series = [("V", arr("shear"), "wall", "V")]
+            xlabel = "Shear (kN/m)"
+        elif quantity == "rotation":
+            series = [("rotation", arr("rotation"), "wall", "rotation")]
+            xlabel = "Rotation (deg)"
+        elif quantity == "water":
+            series = [("u_L", neg(arr("u_left")), "left", "u_L"), ("u_R", pos(arr("u_right")), "right", "u_R")]
+            xlabel = "u (kPa)"
+        elif quantity == "effective":
+            series = [("σh,L", neg(arr("sigma_left_eff")), "left", "σh,L"), ("σh,R", pos(arr("sigma_right_eff")), "right", "σh,R")]
+            xlabel = "σ'h (kPa)"
+        else:
+            series = [("p_net", arr("net_pressure"), "wall", "p_net")]
+            xlabel = "p_net (kPa)"
+
+        H_R = float(model.geometry.H_R)
+        H_L = float(model.geometry.H_L)
+        z_left = H_R - H_L
+
+        ax.axvspan(xmin, 0, ymin=0, ymax=1, color="#e0f2fe", alpha=0.18)
+        ax.axvspan(0, xmax, ymin=0, ymax=1, color="#e0f2fe", alpha=0.10)
+        ax.fill_betweenx([max(float(zL), z_left), H_R], xmin, 0.0, color="#38bdf8", alpha=0.16)
+        ax.fill_betweenx([max(float(zR), 0.0), H_R], 0.0, xmax, color="#38bdf8", alpha=0.16)
+        ax.hlines(zL, xmin, 0.0, colors="#2563eb", linestyles="--", linewidth=1.5)
+        ax.hlines(zR, 0.0, xmax, colors="#2563eb", linestyles="--", linewidth=1.5)
+        ax.hlines(z_left, xmin, 0.0, colors="saddlebrown", linewidth=1.4)
+        ax.hlines(0.0, 0.0, xmax, colors="saddlebrown", linewidth=1.4)
+        ax.axvline(0.0, color="black", linewidth=1.2)
+
         def _with_depth_break(xs, zs, depth):
             """Break a polyline at an excavation/water interface to avoid fake vertical branches."""
             xs2, zs2 = [], []
             for ii, (xx, zz) in enumerate(zip(xs, zs)):
                 if ii > 0:
-                    zprev = float(zs[ii-1])
+                    zprev = float(zs[ii - 1])
                     zcur = float(zz)
                     if (zprev - depth) * (zcur - depth) < 0.0 or abs(zprev - depth) <= 1.0e-12 or abs(zcur - depth) <= 1.0e-12:
-                        xs2.append(float("nan")); zs2.append(float("nan"))
-                xs2.append(float(xx)); zs2.append(float(zz))
+                        xs2.append(float("nan"))
+                        zs2.append(float("nan"))
+                xs2.append(float(xx))
+                zs2.append(float(zz))
             return xs2, zs2
 
-        for name,x in series:
-            if len(x)==len(z):
+        def _anim_pressure_style(name):
+            lab = str(name).lower()
+            if "at-rest" in lab or "at rest" in lab:
+                return dict(color="black", linestyle="--", linewidth=1.35)
+            if "passive" in lab:
+                return dict(color="red", linestyle="--", linewidth=1.35)
+            if "active" in lab:
+                return dict(color="green", linestyle="--", linewidth=1.35)
+            if "calculated" in lab or lab in ("left", "right"):
+                return dict(color="black", linestyle="-", linewidth=2.0)
+            return dict(linewidth=2.0)
+
+        for rec in series:
+            name, x = rec[0], rec[1]
+            side = rec[2] if len(rec) > 2 else ""
+            legend_label = rec[3] if len(rec) > 3 else name
+
+            if len(x) == len(z):
                 xp, zp = list(x), list(z)
+
                 # On the excavation side, pressure/stress/water series are discontinuous
                 # at the current excavation level.  Do not draw the artificial vertical
                 # connector across that discontinuity.
-                if name in ("Left", "σh,L", "u_L"):
+                if side == "left":
                     xp, zp = _with_depth_break(xp, zp, z_left)
-                ax.plot(xp, zp, linewidth=2, label=name)
-        ax.set_xlim(float(xmin),float(xmax)); ax.set_ylim(H_R+0.25,-0.25); ax.set_xlabel(xlabel); ax.set_ylabel("z (m)")
+
+                ax.plot(
+                    xp,
+                    zp,
+                    label=legend_label,
+                    **_anim_pressure_style(name),
+                )
+
+        ax.set_xlim(float(xmin), float(xmax))
+        ax.set_ylim(H_R + 0.25, -0.25)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel("z (m)")
         ax.set_title(f"{self.var_water_anim_quantity.get()}\nz_w,L={zL:.3f} m, z_w,R={zR:.3f} m")
-        ax.grid(True, linestyle="--", alpha=0.3); self._safe_legend(ax, loc="best", fontsize=8)
+        ax.grid(True, linestyle="--", alpha=0.3)
+        self._safe_legend(ax, loc="best", fontsize=8)
 
     def _draw_water_animation_frame(self, idx):
         if not getattr(self,"water_animation_items",[]): return

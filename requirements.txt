@@ -4,4 +4,4 @@ scipy
 matplotlib
 plotly
 pandas
-Pillow
+pillow>=11
