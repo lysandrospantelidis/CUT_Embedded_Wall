@@ -2749,12 +2749,49 @@ def render_header():
 
     stat_cards()
 
-    # Compact navigation without browser reloads.
+    # Compact navigation. Previous/Next are rendered as an HTML flex pair,
+    # not as Streamlit columns, so they stay side-by-side on mobile. The
+    # section dropdown remains below them.
+    import urllib.parse as _cut_urlparse
+
+    try:
+        _qp_page = st.query_params.get("cut_page", None)
+    except Exception:
+        _qp_page = None
+    if isinstance(_qp_page, list):
+        _qp_page = _qp_page[0] if _qp_page else None
+
+    # Previous/Next use the temporary URL parameter cut_page.
+    # Consume it once, then remove it so the central dropdown can control
+    # the page on the next rerun instead of being forced back by a stale URL.
+    if _qp_page in PAGES:
+        st.session_state.active_page = _qp_page
+        st.session_state.active_page_selector = _qp_page
+        try:
+            del st.query_params["cut_page"]
+        except Exception:
+            pass
+
     try:
         current_idx = PAGES.index(st.session_state.get("active_page", PAGES[0]))
     except ValueError:
         current_idx = 0
         st.session_state.active_page = PAGES[0]
+
+    # Initialize the selector once only. Do not overwrite it on every rerun,
+    # because Streamlit has already stored the user's new dropdown choice
+    # before this script reaches render_header().
+    if st.session_state.get("active_page_selector") not in PAGES:
+        st.session_state.active_page_selector = st.session_state.active_page
+
+    _prev_disabled = current_idx == 0
+    _next_disabled = current_idx >= len(PAGES) - 1
+    _prev_page = PAGES[max(0, current_idx - 1)]
+    _next_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
+    _prev_href = "#" if _prev_disabled else "?cut_page=" + _cut_urlparse.quote(_prev_page)
+    _next_href = "#" if _next_disabled else "?cut_page=" + _cut_urlparse.quote(_next_page)
+    _prev_class = "cut-nav-btn cut-nav-prev" + (" cut-nav-disabled" if _prev_disabled else "")
+    _next_class = "cut-nav-btn cut-nav-next" + (" cut-nav-disabled" if _next_disabled else "")
 
     nav_cols = st.columns(2, gap="small")
 
@@ -2763,9 +2800,9 @@ def render_header():
             "◀ Previous",
             key="cut_prev_page_btn",
             use_container_width=True,
-            disabled=(current_idx == 0),
+            disabled=_prev_disabled,
         ):
-            st.session_state.active_page = PAGES[max(0, current_idx - 1)]
+            st.session_state.active_page = _prev_page
             st.rerun()
 
     with nav_cols[1]:
@@ -2773,13 +2810,11 @@ def render_header():
             "Next ▶",
             key="cut_next_page_btn",
             use_container_width=True,
-            disabled=(current_idx >= len(PAGES) - 1),
+            disabled=_next_disabled,
         ):
-            st.session_state.active_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
+            st.session_state.active_page = _next_page
             st.rerun()
-
-    current_idx = PAGES.index(st.session_state.get("active_page", PAGES[0]))
-
+            
     selected_page = st.selectbox(
         "Section",
         PAGES,
@@ -2787,10 +2822,11 @@ def render_header():
         key="active_page_selector",
         label_visibility="collapsed",
     )
-
     if selected_page in PAGES and selected_page != st.session_state.get("active_page"):
         st.session_state.active_page = selected_page
         st.rerun()
+
+
 
     if st.session_state.reinforcement_type != "No reinforcement":
         st.markdown(
