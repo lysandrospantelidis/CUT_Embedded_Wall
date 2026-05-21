@@ -5420,101 +5420,94 @@ def render_water_animation():
         st.session_state.ui_water_anim_x_max = auto_x_max
         st.session_state.water_anim_auto_x_pending = False
 
-    # Row 1: Diagram + Water rise mode
-    r1c1, r1c2 = st.columns(2, gap="small")
+    st.markdown("#### Animation controls")
 
-    with r1c1:
-        st.markdown("<div class='input-grid-header'>Diagram</div>", unsafe_allow_html=True)
-        quantity_name = st.selectbox(
-            "Diagram",
-            list(WATER_PLOT_OPTIONS.keys()),
-            key="water_anim_plot_type",
-            label_visibility="collapsed",
-            on_change=mark_water_animation_auto_x,
-        )
+    water_row1 = pd.DataFrame({
+        "Diagram": [st.session_state.get("water_anim_plot_type", "Total horizontal pressure")],
+        "Water rise mode": [st.session_state.get("water_anim_mode", "Uniform rise")],
+    })
 
-    with r1c2:
-        st.markdown("<div class='input-grid-header'>Water rise mode</div>", unsafe_allow_html=True)
-        mode = st.selectbox(
-            "Water rise mode",
-            ["Uniform rise", "Simultaneous proportional rise"],
-            key="water_anim_mode",
-            label_visibility="collapsed",
-        )
+    edited_water_row1 = st.data_editor(
+        water_row1,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        height=80,
+        key="water_anim_controls_row1_v1",
+        column_config={
+            "Diagram": st.column_config.SelectboxColumn("Diagram", options=list(WATER_PLOT_OPTIONS.keys()), width="medium"),
+            "Water rise mode": st.column_config.SelectboxColumn("Water rise mode", options=["Uniform rise", "Simultaneous proportional rise"], width="medium"),
+        },
+    )
 
-    # Row 2: Number of steps + z_final_left + z_final_right
-    r2c1, r2c2, r2c3 = st.columns(3, gap="small")
+    quantity_name = str(edited_water_row1.loc[0, "Diagram"])
+    mode = str(edited_water_row1.loc[0, "Water rise mode"])
 
-    with r2c1:
-        st.markdown("<div class='input-grid-header'>Number of steps</div>", unsafe_allow_html=True)
-        n_steps = st.number_input(
-            "Number of steps",
-            min_value=2,
-            max_value=100,
-            step=1,
-            key="water_anim_steps",
-            label_visibility="collapsed",
-        )
+    if quantity_name != st.session_state.get("water_anim_plot_type"):
+        st.session_state.water_anim_plot_type = quantity_name
+        mark_water_animation_auto_x()
 
-    with r2c2:
-        st.markdown("<div class='input-grid-header'>z_final_left (m)</div>", unsafe_allow_html=True)
-        z_final_left = st.number_input(
-            "z_final_left (m)",
-            min_value=float(z_left_surface),
-            max_value=float(H_R),
-            step=0.5,
-            format="%.4g",
-            key="water_anim_z_final_left",
-            label_visibility="collapsed",
-        )
+    st.session_state.water_anim_mode = mode
 
-    with r2c3:
-        st.markdown("<div class='input-grid-header'>z_final_right (m)</div>", unsafe_allow_html=True)
-        z_final_right = st.number_input(
-            "z_final_right (m)",
-            min_value=0.0,
-            max_value=float(H_R),
-            step=0.5,
-            format="%.4g",
-            key="water_anim_z_final_right",
-            label_visibility="collapsed",
-        )
 
-    # Row 3: Frame duration + x_min + x_max
-    r3c1, r3c2, r3c3 = st.columns(3, gap="small")
+    water_row2 = pd.DataFrame({
+        "Number of steps": [int(st.session_state.get("water_anim_steps", 15))],
+        "z_final_left (m)": [float(st.session_state.get("water_anim_z_final_left", z_left_surface))],
+        "z_final_right (m)": [float(st.session_state.get("water_anim_z_final_right", 0.0))],
+    })
 
-    with r3c1:
-        st.markdown("<div class='input-grid-header'>Frame duration (ms)</div>", unsafe_allow_html=True)
-        speed_ms = st.number_input(
-            "Frame duration (ms)",
-            min_value=100,
-            max_value=5000,
-            step=100,
-            key="water_anim_speed_ms",
-            label_visibility="collapsed",
-        )
+    edited_water_row2 = st.data_editor(
+        water_row2,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        height=80,
+        key="water_anim_controls_row2_v1",
+        column_config={
+            "Number of steps": st.column_config.NumberColumn("Number of steps", min_value=2, max_value=100, step=1, width="small"),
+            "z_final_left (m)": st.column_config.NumberColumn("z_final_left (m)", min_value=float(z_left_surface), max_value=float(H_R), step=0.5, format="%.4g", width="small"),
+            "z_final_right (m)": st.column_config.NumberColumn("z_final_right (m)", min_value=0.0, max_value=float(H_R), step=0.5, format="%.4g", width="small"),
+        },
+    )
 
-    with r3c2:
-        st.markdown("<div class='input-grid-header'>x_min</div>", unsafe_allow_html=True)
-        x_min = st.number_input(
-            "x_min",
-            step=1.0,
-            format="%.4g",
-            key="ui_water_anim_x_min",
-            label_visibility="collapsed",
-        )
+    n_steps = int(edited_water_row2.loc[0, "Number of steps"])
+    z_final_left = float(edited_water_row2.loc[0, "z_final_left (m)"])
+    z_final_right = float(edited_water_row2.loc[0, "z_final_right (m)"])
 
-    with r3c3:
-        st.markdown("<div class='input-grid-header'>x_max</div>", unsafe_allow_html=True)
-        x_max = st.number_input(
-            "x_max",
-            step=1.0,
-            format="%.4g",
-            key="ui_water_anim_x_max",
-            label_visibility="collapsed",
-        )
+    st.session_state.water_anim_steps = n_steps
+    st.session_state.water_anim_z_final_left = z_final_left
+    st.session_state.water_anim_z_final_right = z_final_right
 
-    st.markdown("<div class='input-grid-header'>Notes</div>", unsafe_allow_html=True)
+
+    water_row3 = pd.DataFrame({
+        "Frame duration (ms)": [int(st.session_state.get("water_anim_speed_ms", 650))],
+        "x_min": [float(st.session_state.get("ui_water_anim_x_min", st.session_state.get("water_anim_x_min", -1.0)))],
+        "x_max": [float(st.session_state.get("ui_water_anim_x_max", st.session_state.get("water_anim_x_max", 1.0)))],
+    })
+
+    edited_water_row3 = st.data_editor(
+        water_row3,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        height=80,
+        key="water_anim_controls_row3_v1",
+        column_config={
+            "Frame duration (ms)": st.column_config.NumberColumn("Frame duration (ms)", min_value=100, max_value=5000, step=100, width="small"),
+            "x_min": st.column_config.NumberColumn("x_min", step=1.0, format="%.4g", width="small"),
+            "x_max": st.column_config.NumberColumn("x_max", step=1.0, format="%.4g", width="small"),
+        },
+    )
+
+    speed_ms = int(edited_water_row3.loc[0, "Frame duration (ms)"])
+    x_min = float(edited_water_row3.loc[0, "x_min"])
+    x_max = float(edited_water_row3.loc[0, "x_max"])
+
+    st.session_state.water_anim_speed_ms = speed_ms
+    st.session_state.ui_water_anim_x_min = x_min
+    st.session_state.ui_water_anim_x_max = x_max
+
+    st.markdown("**Notes**")
     st.caption(
         "x_min/x_max are selected intelligently whenever the diagram changes; they can still be adjusted manually. "
         "Run once for the selected water-level sequence, then use the Diagram dropdown without rerunning."
