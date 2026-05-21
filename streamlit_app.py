@@ -2731,6 +2731,81 @@ def stat_cards() -> None:
     html.append('</div>')
     st.markdown('\n'.join(html), unsafe_allow_html=True)
 
+
+
+# v7.4 surgical nav styling: Previous/Next are real Streamlit form buttons,
+# not href links, so page changes do not reload the browser and results remain.
+st.markdown(
+    """
+<style>
+/* Target ONLY the form immediately after the nav anchor. */
+div:has(> #cut-nav-buttons-anchor) + div[data-testid="stForm"]{
+    border:0!important;
+    padding:0!important;
+    margin:.10rem 0 .40rem 0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+}
+
+/* Keep Previous/Next side-by-side, including on phones. */
+div:has(> #cut-nav-buttons-anchor) + div[data-testid="stForm"] div[data-testid="stHorizontalBlock"]{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    gap:.45rem!important;
+    width:100%!important;
+}
+div:has(> #cut-nav-buttons-anchor) + div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div{
+    flex:1 1 0!important;
+    width:50%!important;
+    max-width:50%!important;
+    min-width:0!important;
+}
+
+/* Shared nav button geometry. */
+div:has(> #cut-nav-buttons-anchor) + div[data-testid="stForm"] button{
+    width:100%!important;
+    min-height:2.45rem!important;
+    border-radius:13px!important;
+    font-weight:750!important;
+    box-shadow:0 2px 8px rgba(31,95,153,.08)!important;
+}
+
+/* Previous: soft red. */
+div:has(> #cut-nav-buttons-anchor) + div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:nth-child(1) button{
+    background:linear-gradient(180deg,#fff1f2 0%,#fee2e2 100%)!important;
+    border:1px solid #f4a7a7!important;
+    color:#7f1d1d!important;
+}
+div:has(> #cut-nav-buttons-anchor) + div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover{
+    background:linear-gradient(180deg,#ffe4e6 0%,#fecaca 100%)!important;
+    border-color:#ef8f8f!important;
+}
+
+/* Next: soft green. */
+div:has(> #cut-nav-buttons-anchor) + div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:nth-child(2) button{
+    background:linear-gradient(180deg,#f0fdf4 0%,#dcfce7 100%)!important;
+    border:1px solid #86d39a!important;
+    color:#14532d!important;
+}
+div:has(> #cut-nav-buttons-anchor) + div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover{
+    background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%)!important;
+    border-color:#67c37c!important;
+}
+
+@media(max-width:900px){
+    div:has(> #cut-nav-buttons-anchor) + div[data-testid="stForm"] div[data-testid="stHorizontalBlock"]{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        gap:.45rem!important;
+    }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
 def render_header():
     home_img = img_uri(asset_path("home.png"))
 
@@ -2792,27 +2867,32 @@ def render_header():
     _next_href = "#" if _next_disabled else "?cut_page=" + _cut_urlparse.quote(_next_page)
     _prev_class = "cut-nav-btn cut-nav-prev" + (" cut-nav-disabled" if _prev_disabled else "")
     _next_class = "cut-nav-btn cut-nav-next" + (" cut-nav-disabled" if _next_disabled else "")
-    nav_cols = st.columns(2, gap="small")
+    st.markdown('<div id="cut-nav-buttons-anchor"></div>', unsafe_allow_html=True)
 
-    with nav_cols[0]:
-        if st.button(
-            "◀ Previous",
-            key="cut_prev_page_btn",
-            use_container_width=True,
-            disabled=_prev_disabled,
-        ):
-            st.session_state.active_page = _prev_page
-            st.rerun()
+    with st.form("cut_nav_buttons_form", clear_on_submit=False):
+        nav_cols = st.columns(2, gap="small")
 
-    with nav_cols[1]:
-        if st.button(
-            "Next ▶",
-            key="cut_next_page_btn",
-            use_container_width=True,
-            disabled=_next_disabled,
-        ):
-            st.session_state.active_page = _next_page
-            st.rerun()
+        with nav_cols[0]:
+            prev_clicked = st.form_submit_button(
+                "◀ Previous",
+                use_container_width=True,
+                disabled=_prev_disabled,
+            )
+
+        with nav_cols[1]:
+            next_clicked = st.form_submit_button(
+                "Next ▶",
+                use_container_width=True,
+                disabled=_next_disabled,
+            )
+
+    if prev_clicked:
+        st.session_state.active_page = _prev_page
+        st.rerun()
+
+    if next_clicked:
+        st.session_state.active_page = _next_page
+        st.rerun()
     selected_page = st.selectbox(
         "Section",
         PAGES,
