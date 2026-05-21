@@ -5420,11 +5420,10 @@ def render_water_animation():
         st.session_state.ui_water_anim_x_max = auto_x_max
         st.session_state.water_anim_auto_x_pending = False
 
-    st.markdown("#### Animation controls")
+    # Row 1: Diagram + Water rise mode
+    r1c1, r1c2 = st.columns(2, gap="small")
 
-    c1, c2, c3, c4, c5 = st.columns([1.30, 1.20, 0.75, 0.85, 0.85], gap="small")
-
-    with c1:
+    with r1c1:
         st.markdown("<div class='input-grid-header'>Diagram</div>", unsafe_allow_html=True)
         quantity_name = st.selectbox(
             "Diagram",
@@ -5434,7 +5433,7 @@ def render_water_animation():
             on_change=mark_water_animation_auto_x,
         )
 
-    with c2:
+    with r1c2:
         st.markdown("<div class='input-grid-header'>Water rise mode</div>", unsafe_allow_html=True)
         mode = st.selectbox(
             "Water rise mode",
@@ -5443,7 +5442,10 @@ def render_water_animation():
             label_visibility="collapsed",
         )
 
-    with c3:
+    # Row 2: Number of steps + z_final_left + z_final_right
+    r2c1, r2c2, r2c3 = st.columns(3, gap="small")
+
+    with r2c1:
         st.markdown("<div class='input-grid-header'>Number of steps</div>", unsafe_allow_html=True)
         n_steps = st.number_input(
             "Number of steps",
@@ -5452,10 +5454,9 @@ def render_water_animation():
             step=1,
             key="water_anim_steps",
             label_visibility="collapsed",
-            help="Number of water-level positions used in the animation.",
         )
 
-    with c4:
+    with r2c2:
         st.markdown("<div class='input-grid-header'>z_final_left (m)</div>", unsafe_allow_html=True)
         z_final_left = st.number_input(
             "z_final_left (m)",
@@ -5465,10 +5466,9 @@ def render_water_animation():
             format="%.4g",
             key="water_anim_z_final_left",
             label_visibility="collapsed",
-            help="Default is the left/excavation ground surface.",
         )
 
-    with c5:
+    with r2c3:
         st.markdown("<div class='input-grid-header'>z_final_right (m)</div>", unsafe_allow_html=True)
         z_final_right = st.number_input(
             "z_final_right (m)",
@@ -5478,12 +5478,12 @@ def render_water_animation():
             format="%.4g",
             key="water_anim_z_final_right",
             label_visibility="collapsed",
-            help="Default is the right/retained ground surface.",
         )
 
-    c1, c2, c3, c4 = st.columns([0.85, 0.85, 0.85, 2.5], gap="small")
+    # Row 3: Frame duration + x_min + x_max
+    r3c1, r3c2, r3c3 = st.columns(3, gap="small")
 
-    with c1:
+    with r3c1:
         st.markdown("<div class='input-grid-header'>Frame duration (ms)</div>", unsafe_allow_html=True)
         speed_ms = st.number_input(
             "Frame duration (ms)",
@@ -5492,10 +5492,9 @@ def render_water_animation():
             step=100,
             key="water_anim_speed_ms",
             label_visibility="collapsed",
-            help="Delay between animation frames. Larger values make the animation slower.",
         )
 
-    with c2:
+    with r3c2:
         st.markdown("<div class='input-grid-header'>x_min</div>", unsafe_allow_html=True)
         x_min = st.number_input(
             "x_min",
@@ -5503,10 +5502,9 @@ def render_water_animation():
             format="%.4g",
             key="ui_water_anim_x_min",
             label_visibility="collapsed",
-            help="Manual left plotting limit. Leave the automatic value unless you need extra horizontal space.",
         )
 
-    with c3:
+    with r3c3:
         st.markdown("<div class='input-grid-header'>x_max</div>", unsafe_allow_html=True)
         x_max = st.number_input(
             "x_max",
@@ -5514,15 +5512,13 @@ def render_water_animation():
             format="%.4g",
             key="ui_water_anim_x_max",
             label_visibility="collapsed",
-            help="Manual right plotting limit. Increase it when long reinforcement elements need to be shown.",
         )
 
-    with c4:
-        st.markdown("<div class='input-grid-header'>Notes</div>", unsafe_allow_html=True)
-        st.caption(
-            "x_min/x_max are selected intelligently whenever the diagram changes; they can still be adjusted manually. "
-            "Run once for the selected water-level sequence, then use the Diagram dropdown without rerunning."
-        )
+    st.markdown("<div class='input-grid-header'>Notes</div>", unsafe_allow_html=True)
+    st.caption(
+        "x_min/x_max are selected intelligently whenever the diagram changes; they can still be adjusted manually. "
+        "Run once for the selected water-level sequence, then use the Diagram dropdown without rerunning."
+    )
 
 
     # Copy widget values to canonical variables. Do not write to ui_* after this point.
