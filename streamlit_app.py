@@ -2731,6 +2731,85 @@ def stat_cards() -> None:
     html.append('</div>')
     st.markdown('\n'.join(html), unsafe_allow_html=True)
 
+
+
+# v7.4 surgical nav memory fix styling: Previous/Next are Streamlit buttons
+# so navigation does not reload the browser and solver results remain in memory.
+st.markdown(
+    """
+<style>
+.cut-nav-streamlit-marker{
+    height:0;
+    margin:0;
+    padding:0;
+}
+
+/* Style only the Previous/Next Streamlit button row after the marker. */
+.element-container:has(.cut-nav-streamlit-marker) + div[data-testid="stHorizontalBlock"]{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    gap:.45rem!important;
+    width:100%!important;
+    margin:.10rem 0 .35rem 0!important;
+}
+
+.element-container:has(.cut-nav-streamlit-marker) + div[data-testid="stHorizontalBlock"] > div{
+    flex:1 1 0!important;
+    min-width:0!important;
+}
+
+.element-container:has(.cut-nav-streamlit-marker) + div[data-testid="stHorizontalBlock"] button{
+    width:100%!important;
+    min-height:2.45rem!important;
+    border-radius:13px!important;
+    font-weight:750!important;
+    box-shadow:0 2px 8px rgba(31,95,153,.08)!important;
+}
+
+.element-container:has(.cut-nav-streamlit-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(1) button{
+    background:linear-gradient(180deg,#fff1f2 0%,#fee2e2 100%)!important;
+    border:1px solid #f4a7a7!important;
+    color:#7f1d1d!important;
+}
+
+.element-container:has(.cut-nav-streamlit-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover{
+    background:linear-gradient(180deg,#ffe4e6 0%,#fecaca 100%)!important;
+    border-color:#ef8f8f!important;
+}
+
+.element-container:has(.cut-nav-streamlit-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(2) button{
+    background:linear-gradient(180deg,#f0fdf4 0%,#dcfce7 100%)!important;
+    border:1px solid #86d39a!important;
+    color:#14532d!important;
+}
+
+.element-container:has(.cut-nav-streamlit-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover{
+    background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%)!important;
+    border-color:#67c37c!important;
+}
+
+@media(max-width:900px){
+    .element-container:has(.cut-nav-streamlit-marker) + div[data-testid="stHorizontalBlock"]{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        gap:.45rem!important;
+    }
+
+    .element-container:has(.cut-nav-streamlit-marker) + div[data-testid="stHorizontalBlock"] > div{
+        flex:1 1 50%!important;
+        width:50%!important;
+        max-width:50%!important;
+        min-width:0!important;
+    }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
 def render_header():
     home_img = img_uri(asset_path("home.png"))
 
@@ -2792,6 +2871,8 @@ def render_header():
     _next_href = "#" if _next_disabled else "?cut_page=" + _cut_urlparse.quote(_next_page)
     _prev_class = "cut-nav-btn cut-nav-prev" + (" cut-nav-disabled" if _prev_disabled else "")
     _next_class = "cut-nav-btn cut-nav-next" + (" cut-nav-disabled" if _next_disabled else "")
+    st.markdown('<div class="cut-nav-streamlit-marker"></div>', unsafe_allow_html=True)
+
     nav_cols = st.columns(2, gap="small")
 
     with nav_cols[0]:
