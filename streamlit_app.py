@@ -5422,20 +5422,10 @@ def render_water_animation():
 
     st.markdown("#### Animation controls")
 
-    h1, h2, h3, h4, h5 = st.columns([1.30, 1.20, 0.75, 0.85, 0.85], gap="small")
-    with h1:
-        st.markdown("<div class='input-grid-header'>Diagram</div>", unsafe_allow_html=True)
-    with h2:
-        st.markdown("<div class='input-grid-header'>Water rise mode</div>", unsafe_allow_html=True)
-    with h3:
-        st.markdown("<div class='input-grid-header'>Number of steps</div>", unsafe_allow_html=True)
-    with h4:
-        st.markdown("<div class='input-grid-header'>z_final_left (m)</div>", unsafe_allow_html=True)
-    with h5:
-        st.markdown("<div class='input-grid-header'>z_final_right (m)</div>", unsafe_allow_html=True)
-
     c1, c2, c3, c4, c5 = st.columns([1.30, 1.20, 0.75, 0.85, 0.85], gap="small")
+
     with c1:
+        st.markdown("<div class='input-grid-header'>Diagram</div>", unsafe_allow_html=True)
         quantity_name = st.selectbox(
             "Diagram",
             list(WATER_PLOT_OPTIONS.keys()),
@@ -5443,37 +5433,97 @@ def render_water_animation():
             label_visibility="collapsed",
             on_change=mark_water_animation_auto_x,
         )
-    with c2:
-        mode = st.selectbox("Water rise mode", ["Uniform rise", "Simultaneous proportional rise"], key="water_anim_mode", label_visibility="collapsed")
-    with c3:
-        n_steps = st.number_input("Number of steps", min_value=2, max_value=100, step=1, key="water_anim_steps", label_visibility="collapsed", help="Number of water-level positions used in the animation.")
-    with c4:
-        z_final_left = st.number_input("z_final_left (m)", min_value=float(z_left_surface), max_value=float(H_R), step=0.5, format="%.4g", key="water_anim_z_final_left", label_visibility="collapsed", help="Default is the left/excavation ground surface.")
-    with c5:
-        z_final_right = st.number_input("z_final_right (m)", min_value=0.0, max_value=float(H_R), step=0.5, format="%.4g", key="water_anim_z_final_right", label_visibility="collapsed", help="Default is the right/retained ground surface.")
 
-    h1, h2, h3, h4 = st.columns([0.85, 0.85, 0.85, 2.5], gap="small")
-    with h1:
-        st.markdown("<div class='input-grid-header'>Frame duration (ms)</div>", unsafe_allow_html=True)
-    with h2:
-        st.markdown("<div class='input-grid-header'>x_min</div>", unsafe_allow_html=True)
-    with h3:
-        st.markdown("<div class='input-grid-header'>x_max</div>", unsafe_allow_html=True)
-    with h4:
-        st.markdown("<div class='input-grid-header'>Notes</div>", unsafe_allow_html=True)
+    with c2:
+        st.markdown("<div class='input-grid-header'>Water rise mode</div>", unsafe_allow_html=True)
+        mode = st.selectbox(
+            "Water rise mode",
+            ["Uniform rise", "Simultaneous proportional rise"],
+            key="water_anim_mode",
+            label_visibility="collapsed",
+        )
+
+    with c3:
+        st.markdown("<div class='input-grid-header'>Number of steps</div>", unsafe_allow_html=True)
+        n_steps = st.number_input(
+            "Number of steps",
+            min_value=2,
+            max_value=100,
+            step=1,
+            key="water_anim_steps",
+            label_visibility="collapsed",
+            help="Number of water-level positions used in the animation.",
+        )
+
+    with c4:
+        st.markdown("<div class='input-grid-header'>z_final_left (m)</div>", unsafe_allow_html=True)
+        z_final_left = st.number_input(
+            "z_final_left (m)",
+            min_value=float(z_left_surface),
+            max_value=float(H_R),
+            step=0.5,
+            format="%.4g",
+            key="water_anim_z_final_left",
+            label_visibility="collapsed",
+            help="Default is the left/excavation ground surface.",
+        )
+
+    with c5:
+        st.markdown("<div class='input-grid-header'>z_final_right (m)</div>", unsafe_allow_html=True)
+        z_final_right = st.number_input(
+            "z_final_right (m)",
+            min_value=0.0,
+            max_value=float(H_R),
+            step=0.5,
+            format="%.4g",
+            key="water_anim_z_final_right",
+            label_visibility="collapsed",
+            help="Default is the right/retained ground surface.",
+        )
 
     c1, c2, c3, c4 = st.columns([0.85, 0.85, 0.85, 2.5], gap="small")
+
     with c1:
-        speed_ms = st.number_input("Frame duration (ms)", min_value=100, max_value=5000, step=100, key="water_anim_speed_ms", label_visibility="collapsed", help="Delay between animation frames. Larger values make the animation slower.")
+        st.markdown("<div class='input-grid-header'>Frame duration (ms)</div>", unsafe_allow_html=True)
+        speed_ms = st.number_input(
+            "Frame duration (ms)",
+            min_value=100,
+            max_value=5000,
+            step=100,
+            key="water_anim_speed_ms",
+            label_visibility="collapsed",
+            help="Delay between animation frames. Larger values make the animation slower.",
+        )
+
     with c2:
-        x_min = st.number_input("x_min", step=1.0, format="%.4g", key="ui_water_anim_x_min", label_visibility="collapsed", help="Manual left plotting limit. Leave the automatic value unless you need extra horizontal space.")
+        st.markdown("<div class='input-grid-header'>x_min</div>", unsafe_allow_html=True)
+        x_min = st.number_input(
+            "x_min",
+            step=1.0,
+            format="%.4g",
+            key="ui_water_anim_x_min",
+            label_visibility="collapsed",
+            help="Manual left plotting limit. Leave the automatic value unless you need extra horizontal space.",
+        )
+
     with c3:
-        x_max = st.number_input("x_max", step=1.0, format="%.4g", key="ui_water_anim_x_max", label_visibility="collapsed", help="Manual right plotting limit. Increase it when long reinforcement elements need to be shown.")
+        st.markdown("<div class='input-grid-header'>x_max</div>", unsafe_allow_html=True)
+        x_max = st.number_input(
+            "x_max",
+            step=1.0,
+            format="%.4g",
+            key="ui_water_anim_x_max",
+            label_visibility="collapsed",
+            help="Manual right plotting limit. Increase it when long reinforcement elements need to be shown.",
+        )
+
     with c4:
+        st.markdown("<div class='input-grid-header'>Notes</div>", unsafe_allow_html=True)
         st.caption(
             "x_min/x_max are selected intelligently whenever the diagram changes; they can still be adjusted manually. "
             "Run once for the selected water-level sequence, then use the Diagram dropdown without rerunning."
         )
+
 
     # Copy widget values to canonical variables. Do not write to ui_* after this point.
     try:
