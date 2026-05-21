@@ -2783,16 +2783,11 @@ def render_header():
 
     about_html = html.escape(about_text()).replace("\n", "<br>")
 
-    description_link = (
+   description_link = (
         '<a class="home-link" '
-        'href="https://github.com/lysandrospantelidis/CUT_Embedded_Wall/blob/main/assets/CUT_Embedded_Wall_Description.pdf" '
+        'href="https://raw.githubusercontent.com/lysandrospantelidis/CUT_Embedded_Wall/main/assets/CUT_Embedded_Wall_Description.pdf" '
         'target="_blank">Description</a>'
     )
-#    description_link = (
-#        '<a class="home-link" '
-#        'href="https://raw.githubusercontent.com/lysandrospantelidis/CUT_Embedded_Wall/main/assets/CUT_Embedded_Wall_Description.pdf" '
-#        'target="_blank">Description</a>'
-#    )
 
     st.markdown(
         f"""<div class="header-actions">
