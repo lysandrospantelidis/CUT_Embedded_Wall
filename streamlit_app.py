@@ -2786,20 +2786,22 @@ def render_header():
     description_pdf = asset_path("assets", "CUT_Embedded_Wall_Description.pdf")
 
     if description_pdf.exists():
-        with open(description_pdf, "rb") as f:
-            st.download_button(
-                "Description",
-                data=f,
-                file_name="CUT_Embedded_Wall_Description.pdf",
-                mime="application/pdf",
-                key="description_pdf_button",
-            )
+        description_b64 = base64.b64encode(description_pdf.read_bytes()).decode("ascii")
+        description_link = (
+            f'<a class="home-link" '
+            f'href="data:application/pdf;base64,{description_b64}" '
+            f'target="_blank">Description</a>'
+        )
     else:
-        st.warning("CUT_Embedded_Wall_Description.pdf not found in assets.")
+        description_link = (
+            '<span class="home-link" title="CUT_Embedded_Wall_Description.pdf not found">'
+            'Description</span>'
+        )
 
     st.markdown(
         f"""<div class="header-actions">
     <a class="home-link" href="{HOME_URL}" target="_blank"><img src="{home_img}" alt="home">Home</a>
+    {description_link}
     <details class="about-details"><summary>About⌄</summary><div>{about_html}</div></details>
     </div>""",
         unsafe_allow_html=True,
