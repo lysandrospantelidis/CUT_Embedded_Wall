@@ -3156,7 +3156,9 @@ def _commit_global_parameters_editor() -> None:
         pass
 
 def render_model_inputs(model_preview: Any):
-    st.markdown('<div class="cut-section-title">Model inputs</div>', unsafe_allow_html=True)
+    st.markdown(
+    '<div class="cut-section-title" style="margin-top:1.05rem; margin-bottom:.70rem;">Model inputs</div>',
+    unsafe_allow_html=True)
 
     # -----------------------------
     # Geometry / loads
