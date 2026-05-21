@@ -2788,9 +2788,9 @@ def render_header():
     _next_disabled = current_idx >= len(PAGES) - 1
     _prev_page = PAGES[max(0, current_idx - 1)]
     _next_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
-    # Use real Streamlit buttons, not HTML links.  HTML links reload the app
-    # on Streamlit Cloud and can start a fresh session, which loses last_result
-    # and makes Results/Plots look empty after changing pages.
+    # Previous/Next must be real Streamlit buttons, not HTML links.
+    # HTML links reload Streamlit Cloud and can lose last_model/last_result.
+    # The marker lets the CSS below style this exact two-button row.
     st.markdown('<div class="cut-nav-button-row-marker"></div>', unsafe_allow_html=True)
     nav_prev_col, nav_next_col = st.columns(2, gap="small")
     with nav_prev_col:
@@ -3101,50 +3101,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-
-# v7.4 FIX13: Previous/Next are real Streamlit buttons, not HTML links.
-# This preserves session_state last_model/last_result when moving between pages.
-st.markdown("""
-<style>
-/* Force the two Streamlit navigation buttons to remain one row on phones. */
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"]{
-    display:flex!important;
-    flex-direction:row!important;
-    flex-wrap:nowrap!important;
-    gap:.65rem!important;
-    width:100%!important;
-    margin:.55rem 0 .65rem 0!important;
-}
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div{
-    flex:1 1 0!important;
-    width:50%!important;
-    min-width:0!important;
-    max-width:none!important;
-}
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] button{
-    min-height:54px!important;
-    border-radius:13px!important;
-    font-weight:800!important;
-    font-size:1.02rem!important;
-    box-shadow:0 5px 14px rgba(20,65,110,.10)!important;
-}
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(1) button{
-    background:linear-gradient(180deg,#fff3f3,#f7dddd)!important;
-    border:1px solid #e2a0a0!important;
-    color:#7b2323!important;
-}
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(2) button{
-    background:linear-gradient(180deg,#f0fbf2,#dff4e5)!important;
-    border:1px solid #92c99f!important;
-    color:#1f6b34!important;
-}
-@media(max-width:900px){
-    div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"]{gap:.45rem!important;}
-    div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] button{font-size:.98rem!important;min-height:52px!important;}
-}
-</style>
-""", unsafe_allow_html=True)
 
 def _cut_fmt(value: Any, fmt: str = "{:.2f}") -> str:
     try:
@@ -6899,6 +6855,58 @@ div[data-testid="stDataFrame"] [data-testid="stDataFrameColumnHeaderMenu"]{displ
 @media(max-width:900px){
   .header-actions{gap:.45rem!important;margin:.45rem 0 .65rem 0!important;}
   .home-link,.about-details summary{width:116px!important;min-width:116px!important;max-width:116px!important;height:42px!important;}
+}
+</style>
+""", unsafe_allow_html=True)
+
+# v7.4 FIX14: final surgical nav override — keep real Streamlit Previous/Next
+# buttons grouped, colored, and non-reloading, preserving solver results.
+st.markdown("""
+<style>
+/* exact row immediately after marker */
+div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"]{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    gap:.65rem!important;
+    width:100%!important;
+    margin:.55rem 0 .65rem 0!important;
+}
+div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div{
+    flex:1 1 0!important;
+    width:50%!important;
+    min-width:0!important;
+    max-width:none!important;
+}
+div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] button{
+    width:100%!important;
+    min-height:54px!important;
+    border-radius:13px!important;
+    font-weight:800!important;
+    font-size:1.02rem!important;
+    box-shadow:0 5px 14px rgba(20,65,110,.10)!important;
+}
+div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(1) button{
+    background:linear-gradient(180deg,#fff3f3,#f7dddd)!important;
+    border:1px solid #e2a0a0!important;
+    color:#7b2323!important;
+}
+div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover{
+    background:linear-gradient(180deg,#ffe8e8,#f1cccc)!important;
+    border-color:#d37a7a!important;
+}
+div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(2) button{
+    background:linear-gradient(180deg,#f0fbf2,#dff4e5)!important;
+    border:1px solid #92c99f!important;
+    color:#1f6b34!important;
+}
+div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover{
+    background:linear-gradient(180deg,#e3f8e8,#ccefd6)!important;
+    border-color:#72b983!important;
+}
+@media(max-width:900px){
+    div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"]{gap:.45rem!important;}
+    div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] button{font-size:.98rem!important;min-height:52px!important;}
 }
 </style>
 """, unsafe_allow_html=True)
