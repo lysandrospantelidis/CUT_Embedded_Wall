@@ -5874,14 +5874,21 @@ def mark_stage_animation_auto_x() -> None:
 
 
 def render_stages_and_reinforcement(model_preview: Any):
-    st.markdown('<div class="cut-section-title">Stages and reinforcement</div>', unsafe_allow_html=True)
+    st.markdown(
+    '<div class="cut-section-title" style="margin-top:1.05rem; margin-bottom:.70rem;">Stages and reinforcement</div>',
+    unsafe_allow_html=True)
     base_model = model_preview or build_model()
     H_R = float(base_model.geometry.H_R)
     H_L = float(base_model.geometry.H_L)
     z_ex = max(0.0, H_R - H_L)
     left, right = st.columns([0.42, 0.58], gap="large")
     with left:
-        st.markdown("#### Excavation stages")
+        st.markdown(
+    '<div style="margin-top:.85rem; margin-bottom:.65rem;">'
+    '<h3 style="margin:0;">Excavation stages</h3>'
+    '</div>',
+    unsafe_allow_html=True
+)
         st.caption(f"Total excavation depth: z_ex = H_R − H_L = {z_ex:.4g} m")
         st.markdown('<div class="cut-visible-field-label">Number of main excavation stages</div>', unsafe_allow_html=True)
         n = st.number_input("Number of main excavation stages", min_value=1, max_value=30, step=1, key="n_excavation_stages", help="Number of principal excavation levels after Stage 0. Stage 0 is no excavation/no supports; the final stage is locked to z_ex = H_R − H_L.")
