@@ -1171,9 +1171,8 @@ PERSISTENT_INPUT_KEYS = {
     "last_model",
     "last_result",
     "run_message",
-    "permanent_last_model",
-    "permanent_last_result",
 }
+
 
 def preserve_persistent_inputs() -> None:
     """Prevent Streamlit from deleting widget state across pages.
@@ -1513,31 +1512,6 @@ init_state()
 sanitize_state()
 apply_pending_active_page()
 preserve_persistent_inputs()
-
-# ============================================================
-# PERSISTENT RESULTS ACROSS TABS (FIX)
-# ============================================================
-def preserve_results_across_tabs():
-    """Αποθηκεύει τα αποτελέσματα σε persistent keys ώστε να μη χάνονται όταν αλλάζεις tab."""
-    if "permanent_last_result" not in st.session_state:
-        st.session_state.permanent_last_result = None
-    if "permanent_last_model" not in st.session_state:
-        st.session_state.permanent_last_model = None
-    
-    # Αν υπάρχει νέο αποτέλεσμα, το αποθηκεύω στο permanent
-    if st.session_state.get("last_result") is not None:
-        st.session_state.permanent_last_result = st.session_state.last_result
-    if st.session_state.get("last_model") is not None:
-        st.session_state.permanent_last_model = st.session_state.last_model
-    
-    # Τοποθετώ ξανά τα permanent αποτελέσματα στα last_result/last_model
-    if st.session_state.permanent_last_result is not None:
-        st.session_state.last_result = st.session_state.permanent_last_result
-    if st.session_state.permanent_last_model is not None:
-        st.session_state.last_model = st.session_state.permanent_last_model
-
-preserve_results_across_tabs()
-# ============================================================
 
 
 
@@ -2719,11 +2693,6 @@ def run_solver_now():
 
     st.session_state.last_model = model
     st.session_state.last_result = result
-    
-    # Αποθήκευση στα permanent keys
-    st.session_state.permanent_last_model = model
-    st.session_state.permanent_last_result = result
-    
     st.session_state.run_message = f"{result.status}: {result.message}"
 
     # Navigate after a successful run without touching the selectbox key after
@@ -2732,20 +2701,14 @@ def run_solver_now():
     request_active_page("Plots")
     st.rerun()
 
+
 def cached_solve(model):
     """Run solver with the current model.
 
     Not cached: engineering inputs must never be silently replaced by a
     previous/default run when Streamlit reruns the script.
     """
-    result = solvers.solve(model)
-    
-    # Αποθήκευση στα permanent keys για ασφάλεια
-    if result is not None:
-        st.session_state.permanent_last_model = model
-        st.session_state.permanent_last_result = result
-    
-    return result
+    return solvers.solve(model)
     
 
 def _short(text: str, n: int = 42) -> str:
@@ -2767,28 +2730,6 @@ def stat_cards() -> None:
         html.append(f'<div class="stat"><div class="stat-label">{lab}</div><div class="stat-value">{val}</div></div>')
     html.append('</div>')
     st.markdown('\n'.join(html), unsafe_allow_html=True)
-
-# ============================================================
-# RESTORE RESULTS ACROSS TABS (FIX)
-# ============================================================
-def restore_results_across_tabs():
-    """Επαναφέρει τα αποτελέσματα όταν αλλάζεις tab, αν υπάρχουν αποθηκευμένα."""
-    if "permanent_last_result" not in st.session_state:
-        st.session_state.permanent_last_result = None
-    if "permanent_last_model" not in st.session_state:
-        st.session_state.permanent_last_model = None
-    
-    # Αν υπάρχουν permanent αποτελέσματα και τα τρέχοντα είναι None, τα επαναφέρω
-    if st.session_state.permanent_last_result is not None:
-        if st.session_state.get("last_result") is None:
-            st.session_state.last_result = st.session_state.permanent_last_result
-    if st.session_state.permanent_last_model is not None:
-        if st.session_state.get("last_model") is None:
-            st.session_state.last_model = st.session_state.permanent_last_model
-
-# Καλώ τη συνάρτηση restore ΑΜΕΣΩΣ
-restore_results_across_tabs()
-# ============================================================
 
 def render_header():
     home_img = img_uri(asset_path("home.png"))
@@ -2851,20 +2792,27 @@ def render_header():
     _next_href = "#" if _next_disabled else "?cut_page=" + _cut_urlparse.quote(_next_page)
     _prev_class = "cut-nav-btn cut-nav-prev" + (" cut-nav-disabled" if _prev_disabled else "")
     _next_class = "cut-nav-btn cut-nav-next" + (" cut-nav-disabled" if _next_disabled else "")
-    st.markdown(
-        """
-        <div class="cut-nav-pair">
-            <a class="{prev_class}" href="{prev_href}" target="_self">◀ Previous</a>
-            <a class="{next_class}" href="{next_href}" target="_self">Next ▶</a>
-        </div>
-        """.format(
-            prev_class=_prev_class,
-            prev_href=_prev_href,
-            next_class=_next_class,
-            next_href=_next_href,
-        ),
-        unsafe_allow_html=True,
-    )
+    nav_cols = st.columns(2, gap="small")
+
+    with nav_cols[0]:
+        if st.button(
+            "◀ Previous",
+            key="cut_prev_page_btn",
+            use_container_width=True,
+            disabled=_prev_disabled,
+        ):
+            st.session_state.active_page = _prev_page
+            st.rerun()
+
+    with nav_cols[1]:
+        if st.button(
+            "Next ▶",
+            key="cut_next_page_btn",
+            use_container_width=True,
+            disabled=_next_disabled,
+        ):
+            st.session_state.active_page = _next_page
+            st.rerun()
     selected_page = st.selectbox(
         "Section",
         PAGES,
