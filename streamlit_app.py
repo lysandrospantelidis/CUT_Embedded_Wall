@@ -1175,14 +1175,13 @@ PERSISTENT_INPUT_KEYS = {
 
 
 def preserve_persistent_inputs() -> None:
+    """Prevent Streamlit from deleting widget state across pages.
+
+    This must be called only before widgets are rendered.
     """
-    Prevent Streamlit from deleting widget state across pages.
-    Touch all persistent keys so Streamlit keeps them alive
-    even if the widgets are not rendered in the current page.
-    """
-    for k in PERSISTENT_INPUT_KEYS:
-        if k in st.session_state:
-            st.session_state[k] = st.session_state[k]
+    for key in list(PERSISTENT_INPUT_KEYS):
+        if key in st.session_state:
+            st.session_state[key] = st.session_state[key]
 
 
 def request_active_page(page: str) -> None:
@@ -1513,6 +1512,31 @@ init_state()
 sanitize_state()
 apply_pending_active_page()
 preserve_persistent_inputs()
+
+# ============================================================
+# PERSISTENT RESULTS ACROSS TABS (FIX)
+# ============================================================
+def preserve_results_across_tabs():
+    """Αποθηκεύει τα αποτελέσματα σε persistent keys ώστε να μη χάνονται όταν αλλάζεις tab."""
+    if "permanent_last_result" not in st.session_state:
+        st.session_state.permanent_last_result = None
+    if "permanent_last_model" not in st.session_state:
+        st.session_state.permanent_last_model = None
+    
+    # Αν υπάρχει νέο αποτέλεσμα, το αποθηκεύω στο permanent
+    if st.session_state.get("last_result") is not None:
+        st.session_state.permanent_last_result = st.session_state.last_result
+    if st.session_state.get("last_model") is not None:
+        st.session_state.permanent_last_model = st.session_state.last_model
+    
+    # Τοποθετώ ξανά τα permanent αποτελέσματα στα last_result/last_model
+    if st.session_state.permanent_last_result is not None:
+        st.session_state.last_result = st.session_state.permanent_last_result
+    if st.session_state.permanent_last_model is not None:
+        st.session_state.last_model = st.session_state.permanent_last_model
+
+preserve_results_across_tabs()
+# ============================================================
 
 
 
@@ -2694,6 +2718,14 @@ def run_solver_now():
 
     st.session_state.last_model = model
     st.session_state.last_result = result
+    
+    # ============================================================
+    # PERSISTENT STORAGE (FIX)
+    # ============================================================
+    st.session_state.permanent_last_model = model
+    st.session_state.permanent_last_result = result
+    # ============================================================
+    
     st.session_state.run_message = f"{result.status}: {result.message}"
 
     # Navigate after a successful run without touching the selectbox key after
@@ -2702,14 +2734,23 @@ def run_solver_now():
     request_active_page("Plots")
     st.rerun()
 
-
 def cached_solve(model):
     """Run solver with the current model.
 
     Not cached: engineering inputs must never be silently replaced by a
     previous/default run when Streamlit reruns the script.
     """
-    return solvers.solve(model)
+    result = solvers.solve(model)
+    
+    # ============================================================
+    # PERSISTENT STORAGE (FIX - SAFETY)
+    # ============================================================
+    if result is not None:
+        st.session_state.permanent_last_model = model
+        st.session_state.permanent_last_result = result
+    # ============================================================
+    
+    return result
     
 
 def _short(text: str, n: int = 42) -> str:
