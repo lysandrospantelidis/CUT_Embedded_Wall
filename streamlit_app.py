@@ -6161,92 +6161,68 @@ def render_stages_animation():
 
         st.session_state.stage_anim_auto_x_pending = False
 
-    # ==========================================================
-    # HEADERS
-    # ==========================================================
-    h1, h2, h3, h4 = st.columns(
-        [1.30, 0.85, 0.85, 2.5],
-        gap="small",
+    stage_anim_row1 = pd.DataFrame({
+        "Diagram": [st.session_state.get("stage_anim_plot_type", "Total horizontal pressure")],
+        "Frame duration (ms)": [int(st.session_state.get("stage_anim_speed_ms", 650))],
+        "x_min": [float(st.session_state.get("ui_stage_anim_x_min", st.session_state.get("stage_anim_x_min", -1.0)))],
+        "x_max": [float(st.session_state.get("ui_stage_anim_x_max", st.session_state.get("stage_anim_x_max", 1.0)))],
+    })
+
+    edited_stage_anim_row1 = st.data_editor(
+        stage_anim_row1,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        height=80,
+        key="stage_anim_controls_row1_v1",
+        column_config={
+            "Diagram": st.column_config.SelectboxColumn(
+                "Diagram",
+                options=list(WATER_PLOT_OPTIONS.keys()),
+                width="medium",
+            ),
+            "Frame duration (ms)": st.column_config.NumberColumn(
+                "Frame duration (ms)",
+                min_value=100,
+                max_value=5000,
+                step=100,
+                width="small",
+            ),
+            "x_min": st.column_config.NumberColumn(
+                "x_min",
+                step=1.0,
+                format="%.4g",
+                width="small",
+            ),
+            "x_max": st.column_config.NumberColumn(
+                "x_max",
+                step=1.0,
+                format="%.4g",
+                width="small",
+            ),
+        },
     )
 
-    with h1:
-        st.markdown(
-            "<div class='input-grid-header'>Diagram</div>",
-            unsafe_allow_html=True,
-        )
+    quantity_name = str(edited_stage_anim_row1.loc[0, "Diagram"])
+    speed_ms = int(edited_stage_anim_row1.loc[0, "Frame duration (ms)"])
+    x_min = float(edited_stage_anim_row1.loc[0, "x_min"])
+    x_max = float(edited_stage_anim_row1.loc[0, "x_max"])
 
-    with h2:
-        st.markdown(
-            "<div class='input-grid-header'>Frame duration (ms)</div>",
-            unsafe_allow_html=True,
-        )
+    if quantity_name != st.session_state.get("stage_anim_plot_type"):
+        st.session_state.stage_anim_plot_type = quantity_name
+        mark_stage_animation_auto_x()
 
-    with h3:
-        st.markdown(
-            "<div class='input-grid-header'>x_min</div>",
-            unsafe_allow_html=True,
-        )
+    st.session_state.stage_anim_speed_ms = speed_ms
+    st.session_state.ui_stage_anim_x_min = x_min
+    st.session_state.ui_stage_anim_x_max = x_max
 
-    with h4:
-        st.markdown(
-            "<div class='input-grid-header'>x_max / notes</div>",
-            unsafe_allow_html=True,
-        )
-
-    # ==========================================================
-    # CONTROLS
-    # ==========================================================
-    c1, c2, c3, c4 = st.columns(
-        [1.30, 0.85, 0.85, 2.5],
-        gap="small",
+    st.markdown("**Notes**")
+    st.caption(
+        "x_min/x_max are selected intelligently whenever the diagram changes; "
+        "they can still be adjusted manually. "
+        "Run once for the selected excavation-stage sequence, "
+        "then use the Diagram dropdown without rerunning."
     )
-
-    with c1:
-        quantity_name = st.selectbox(
-            "Diagram",
-            list(WATER_PLOT_OPTIONS.keys()),
-            key="stage_anim_plot_type",
-            label_visibility="collapsed",
-            on_change=mark_stage_animation_auto_x,
-        )
-
-    with c2:
-        speed_ms = st.number_input(
-            "Frame duration (ms)",
-            min_value=100,
-            max_value=5000,
-            step=100,
-            key="stage_anim_speed_ms",
-            label_visibility="collapsed",
-            help="Delay between stage-animation frames. Larger values make the animation slower.",
-        )
-
-    with c3:
-        x_min = st.number_input(
-            "x_min",
-            step=1.0,
-            format="%.4g",
-            key="ui_stage_anim_x_min",
-            label_visibility="collapsed",
-            help="Manual left plotting limit.",
-        )
-
-    with c4:
-        x_max = st.number_input(
-            "x_max",
-            step=1.0,
-            format="%.4g",
-            key="ui_stage_anim_x_max",
-            label_visibility="collapsed",
-            help="Manual right plotting limit.",
-        )
-
-        st.caption(
-            "x_min/x_max are selected intelligently whenever the diagram changes; "
-            "they can still be adjusted manually. "
-            "Run once for the selected excavation-stage sequence, "
-            "then use the Diagram dropdown without rerunning."
-        )
 
     # ==========================================================
     # SAVE MANUAL VALUES
