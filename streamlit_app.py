@@ -1168,6 +1168,9 @@ PERSISTENT_INPUT_KEYS = {
     "stage_anim_results",
     "water_anim_summary",
     "water_anim_levels",
+    "last_model",
+    "last_result",
+    "run_message",
 }
 
 
@@ -2688,7 +2691,13 @@ def run_solver_now():
     st.session_state.last_model = model
     st.session_state.last_result = result
     st.session_state.run_message = f"{result.status}: {result.message}"
-    request_active_page("Plots")
+
+    # Navigate immediately after a successful run without losing the stored
+    # result/model.  Using only _pending_active_page is too late here because
+    # apply_pending_active_page() has already executed near the top of the
+    # script for this run.
+    st.session_state.active_page = "Plots"
+    st.session_state.active_page_selector = "Plots"
 
 
 def cached_solve(model):
@@ -3705,7 +3714,7 @@ def render_run():
 
             with st.spinner("Running solver... please wait"):
                 run_solver_now()
-            st.success(st.session_state.run_message)
+            st.rerun()
         except Exception as exc:
             st.session_state.run_message = f"Error: {exc}"
             st.error(str(exc))
