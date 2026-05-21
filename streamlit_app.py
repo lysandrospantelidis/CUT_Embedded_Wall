@@ -252,7 +252,7 @@ st.markdown(
 }
 
 .img-grid.solver{
-    grid-template-columns:repeat(4,minmax(165px,1fr));
+    grid-template-columns:repeat(5,minmax(118px,1fr));
 }
 
 .img-grid.reinf{
@@ -444,8 +444,11 @@ div[data-testid="stSelectbox"] label{
     }
 
     .img-grid.solver{
-        grid-template-columns:repeat(2,1fr)
+        grid-template-columns:repeat(6,1fr)
     }
+    .img-grid.solver .img-card{grid-column:span 3}
+    .img-grid.solver .img-card:nth-child(n+3){grid-column:span 2}
+}
 }
 
 
@@ -1549,28 +1552,30 @@ def build_model() -> Any:
 
 
 def image_selector(cards: list[tuple[str, str, str]], state_key: str, target_page: str, columns: int) -> None:
-    """Clickable icon-card selector. Query params are handled before navigation rendering."""
+    """Clickable icon-card selector using a CSS grid so mobile layouts stay controlled.
+
+    Desktop keeps the intended single-row layout.  On phones the CSS below forces:
+    - reinforcement: 3 columns x 2 rows
+    - solver: 2 cards on the first row and 3 cards on the second row
+    """
     query_key = f"select_{state_key}"
+    grid_kind = "solver" if state_key == "solver_display" else "reinf"
 
-    cols = st.columns(columns, gap="small")
-
-    for i, (icon, value, label) in enumerate(cards):
+    items = []
+    for icon, value, label in cards:
         selected = (st.session_state.get(state_key) == value)
+        card_class = "img-card selected" if selected else "img-card"
+        src = img_uri(asset_path("assets", "icons", f"{icon}.png"))
+        href = f"?{query_key}={quote(value)}"
+        items.append(
+            f'<a class="{card_class}" href="{href}" target="_self" title="{label}">'
+            f'<img src="{src}" alt="{label}"><span>{label}</span></a>'
+        )
 
-        with cols[i % columns]:
-            card_class = "img-card selected" if selected else "img-card"
-            src = img_uri(asset_path("assets", "icons", f"{icon}.png"))
-            href = f"?{query_key}={quote(value)}"
-
-            st.markdown(
-                f"""
-<a class="{card_class}" href="{href}" target="_self" title="{label}">
-    <img src="{src}" alt="{label}">
-    <span>{label}</span>
-</a>
-""",
-                unsafe_allow_html=True,
-            )
+    st.markdown(
+        f'<div class="img-grid {grid_kind}">' + "".join(items) + "</div>",
+        unsafe_allow_html=True,
+    )
 
 def result_dataframe(result: Any) -> pd.DataFrame:
     if result is None:
@@ -2741,19 +2746,20 @@ def render_header():
         current_idx = 0
         st.session_state.active_page = PAGES[0]
 
-    prev_col, select_col, next_col = st.columns([1.1, 5.8, 1.1], gap="small")
-    with prev_col:
+    st.markdown('<div class="cut-main-nav-marker"></div>', unsafe_allow_html=True)
+    nav_prev_col, nav_next_col, nav_select_col = st.columns([1.15, 1.15, 5.7], gap="small")
+    with nav_prev_col:
         if st.button("◀ Previous", key="nav_prev", use_container_width=True, disabled=current_idx == 0):
             st.session_state.active_page = PAGES[max(0, current_idx - 1)]
             st.rerun()
     # Important: navigation buttons must update active_page before the selectbox
     # with key="active_page" is instantiated in this rerun. Otherwise Streamlit
     # raises: st.session_state.active_page cannot be modified after widget creation.
-    with next_col:
+    with nav_next_col:
         if st.button("Next ▶", key="nav_next", use_container_width=True, disabled=current_idx >= len(PAGES) - 1):
             st.session_state.active_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
             st.rerun()
-    with select_col:
+    with nav_select_col:
         st.selectbox(
             "Section",
             PAGES,
@@ -6400,6 +6406,60 @@ elif page == "Point query":
 
 elif page == "Advanced diagnostics":
     render_advanced()
+
+
+# Surgical mobile layout corrections for the accepted Streamlit version.
+st.markdown("""
+<style>
+/* Main Previous/Next navigation: previous = soft red, next = soft green. */
+.stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"]{
+    align-items:stretch!important;
+}
+.stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(1) button{
+    background:linear-gradient(180deg,#fff1f1,#f8dede)!important;
+    border:1px solid #e3a4a4!important;
+    color:#7a2323!important;
+}
+.stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover{
+    background:linear-gradient(180deg,#ffe8e8,#f3cdcd)!important;
+    border-color:#d47f7f!important;
+}
+.stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(2) button{
+    background:linear-gradient(180deg,#eefaf0,#dff3e4)!important;
+    border:1px solid #9ccca8!important;
+    color:#1f6b34!important;
+}
+.stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover{
+    background:linear-gradient(180deg,#e4f7e8,#cfead7)!important;
+    border-color:#78b888!important;
+}
+
+@media(max-width:900px){
+    /* Keep Previous and Next side by side on phones, with the dropdown below. */
+    .stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"]{
+        display:grid!important;
+        grid-template-columns:1fr 1fr!important;
+        gap:.55rem!important;
+        width:100%!important;
+    }
+    .stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div{
+        width:100%!important;
+        min-width:0!important;
+        padding:0!important;
+    }
+    .stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(3){
+        grid-column:1 / -1!important;
+    }
+
+    /* Icon selectors: controlled mobile grids. */
+    .img-grid.reinf{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+    .img-grid.solver{grid-template-columns:repeat(6,minmax(0,1fr))!important;}
+    .img-grid.solver .img-card{grid-column:span 3!important;}
+    .img-grid.solver .img-card:nth-child(n+3){grid-column:span 2!important;}
+    .img-card{min-height:120px!important;padding:.42rem .20rem!important;}
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.caption("Educational / research software — no warranty. Results must be independently checked by a qualified engineer before design use.")
 
