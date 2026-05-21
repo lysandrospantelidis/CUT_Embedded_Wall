@@ -1171,8 +1171,9 @@ PERSISTENT_INPUT_KEYS = {
     "last_model",
     "last_result",
     "run_message",
+    "permanent_last_model",
+    "permanent_last_result",
 }
-
 
 def preserve_persistent_inputs() -> None:
     """Prevent Streamlit from deleting widget state across pages.
@@ -2719,12 +2720,9 @@ def run_solver_now():
     st.session_state.last_model = model
     st.session_state.last_result = result
     
-    # ============================================================
-    # PERSISTENT STORAGE (FIX)
-    # ============================================================
+    # Αποθήκευση στα permanent keys
     st.session_state.permanent_last_model = model
     st.session_state.permanent_last_result = result
-    # ============================================================
     
     st.session_state.run_message = f"{result.status}: {result.message}"
 
@@ -2742,13 +2740,10 @@ def cached_solve(model):
     """
     result = solvers.solve(model)
     
-    # ============================================================
-    # PERSISTENT STORAGE (FIX - SAFETY)
-    # ============================================================
+    # Αποθήκευση στα permanent keys για ασφάλεια
     if result is not None:
         st.session_state.permanent_last_model = model
         st.session_state.permanent_last_result = result
-    # ============================================================
     
     return result
     
@@ -2772,6 +2767,28 @@ def stat_cards() -> None:
         html.append(f'<div class="stat"><div class="stat-label">{lab}</div><div class="stat-value">{val}</div></div>')
     html.append('</div>')
     st.markdown('\n'.join(html), unsafe_allow_html=True)
+
+# ============================================================
+# RESTORE RESULTS ACROSS TABS (FIX)
+# ============================================================
+def restore_results_across_tabs():
+    """Επαναφέρει τα αποτελέσματα όταν αλλάζεις tab, αν υπάρχουν αποθηκευμένα."""
+    if "permanent_last_result" not in st.session_state:
+        st.session_state.permanent_last_result = None
+    if "permanent_last_model" not in st.session_state:
+        st.session_state.permanent_last_model = None
+    
+    # Αν υπάρχουν permanent αποτελέσματα και τα τρέχοντα είναι None, τα επαναφέρω
+    if st.session_state.permanent_last_result is not None:
+        if st.session_state.get("last_result") is None:
+            st.session_state.last_result = st.session_state.permanent_last_result
+    if st.session_state.permanent_last_model is not None:
+        if st.session_state.get("last_model") is None:
+            st.session_state.last_model = st.session_state.permanent_last_model
+
+# Καλώ τη συνάρτηση restore ΑΜΕΣΩΣ
+restore_results_across_tabs()
+# ============================================================
 
 def render_header():
     home_img = img_uri(asset_path("home.png"))
