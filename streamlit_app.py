@@ -1191,10 +1191,11 @@ def request_active_page(page: str) -> None:
 
 
 def apply_pending_active_page() -> None:
-    """Apply deferred navigation before any widget using active_page is created."""
+    """Apply deferred navigation before any page selector widget is created."""
     pending = st.session_state.pop("_pending_active_page", None)
     if pending in PAGES:
         st.session_state.active_page = pending
+        st.session_state.active_page_selector = pending
         # Safe here: this function runs near the top of the script, before
         # the central selectbox with key active_page_selector is instantiated.
         st.session_state.active_page_selector = pending
@@ -2716,6 +2717,13 @@ def _short(text: str, n: int = 42) -> str:
     return text if len(text) <= n else text[:n-1] + "…"
 
 
+def _active_page_selector_changed() -> None:
+    """Keep the routed page synchronized with the central dropdown."""
+    selected = st.session_state.get("active_page_selector")
+    if selected in PAGES:
+        st.session_state.active_page = selected
+
+
 def stat_cards() -> None:
     left_h = height_from_df(st.session_state.left_layers_df); right_h = height_from_df(st.session_state.right_layers_df)
     vals = [
@@ -2749,38 +2757,15 @@ def render_header():
 
     stat_cards()
 
-    # Compact navigation. Previous/Next are rendered as an HTML flex pair,
-    # not as Streamlit columns, so they stay side-by-side on mobile. The
-    # section dropdown remains below them.
-    import urllib.parse as _cut_urlparse
-
-    try:
-        _qp_page = st.query_params.get("cut_page", None)
-    except Exception:
-        _qp_page = None
-    if isinstance(_qp_page, list):
-        _qp_page = _qp_page[0] if _qp_page else None
-
-    # Previous/Next use the temporary URL parameter cut_page.
-    # Consume it once, then remove it so the central dropdown can control
-    # the page on the next rerun instead of being forced back by a stale URL.
-    if _qp_page in PAGES:
-        st.session_state.active_page = _qp_page
-        st.session_state.active_page_selector = _qp_page
-        try:
-            del st.query_params["cut_page"]
-        except Exception:
-            pass
-
+    # Compact navigation. Previous/Next are Streamlit buttons, not HTML links.
+    # This avoids browser reloads, so last_model/last_result stay in session_state
+    # when moving between pages after a successful solver run.
     try:
         current_idx = PAGES.index(st.session_state.get("active_page", PAGES[0]))
     except ValueError:
         current_idx = 0
         st.session_state.active_page = PAGES[0]
 
-    # Initialize the selector once only. Do not overwrite it on every rerun,
-    # because Streamlit has already stored the user's new dropdown choice
-    # before this script reaches render_header().
     if st.session_state.get("active_page_selector") not in PAGES:
         st.session_state.active_page_selector = st.session_state.active_page
 
@@ -2788,35 +2773,28 @@ def render_header():
     _next_disabled = current_idx >= len(PAGES) - 1
     _prev_page = PAGES[max(0, current_idx - 1)]
     _next_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
-    _prev_href = "#" if _prev_disabled else "?cut_page=" + _cut_urlparse.quote(_prev_page)
-    _next_href = "#" if _next_disabled else "?cut_page=" + _cut_urlparse.quote(_next_page)
-    _prev_class = "cut-nav-btn cut-nav-prev" + (" cut-nav-disabled" if _prev_disabled else "")
-    _next_class = "cut-nav-btn cut-nav-next" + (" cut-nav-disabled" if _next_disabled else "")
-    st.markdown(
-        """
-        <div class="cut-nav-pair">
-            <a class="{prev_class}" href="{prev_href}" target="_self">◀ Previous</a>
-            <a class="{next_class}" href="{next_href}" target="_self">Next ▶</a>
-        </div>
-        """.format(
-            prev_class=_prev_class,
-            prev_href=_prev_href,
-            next_class=_next_class,
-            next_href=_next_href,
-        ),
-        unsafe_allow_html=True,
-    )
-    selected_page = st.selectbox(
+
+    st.markdown('<div class="cut-main-nav-marker"></div>', unsafe_allow_html=True)
+    _nav_cols = st.columns(2, gap="small")
+    with _nav_cols[0]:
+        if st.button("◀ Previous", key="cut_prev_page_btn", use_container_width=True, disabled=_prev_disabled):
+            st.session_state.active_page = _prev_page
+            st.session_state.active_page_selector = _prev_page
+            st.rerun()
+    with _nav_cols[1]:
+        if st.button("Next ▶", key="cut_next_page_btn", use_container_width=True, disabled=_next_disabled):
+            st.session_state.active_page = _next_page
+            st.session_state.active_page_selector = _next_page
+            st.rerun()
+
+    st.selectbox(
         "Section",
         PAGES,
         index=current_idx,
         key="active_page_selector",
         label_visibility="collapsed",
+        on_change=_active_page_selector_changed,
     )
-    if selected_page in PAGES and selected_page != st.session_state.get("active_page"):
-        st.session_state.active_page = selected_page
-        st.rerun()
-
 
 
     if st.session_state.reinforcement_type != "No reinforcement":
