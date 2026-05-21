@@ -3026,6 +3026,55 @@ div[data-testid="stSelectbox"] div[data-baseweb="select"] > div{
     unsafe_allow_html=True,
 )
 
+
+# v7.4 FIX12: surgical spacing for Stages and reinforcement mobile controls.
+# The earlier compact-number-input CSS pulls number inputs upward globally; these
+# overrides give the visible labels in the excavation-staging panel enough real
+# vertical space so labels cannot collide with the input boxes.
+st.markdown(
+    """
+<style>
+.cut-stage-heading{
+    font-size:1.38rem;
+    font-weight:760;
+    line-height:1.15;
+    color:#2b3042;
+    margin:1.25rem 0 .80rem 0;
+}
+.cut-stage-subheading{
+    font-size:1.12rem;
+    font-weight:750;
+    line-height:1.18;
+    color:#2b3042;
+    margin:1.35rem 0 .75rem 0;
+}
+.cut-visible-field-label{
+    display:block!important;
+    margin:.95rem 0 .62rem 0!important;
+    min-height:1.20rem!important;
+    line-height:1.25!important;
+}
+@media(max-width:900px){
+    .cut-stage-heading{
+        font-size:1.38rem!important;
+        margin:1.25rem 0 .85rem 0!important;
+    }
+    .cut-stage-subheading{
+        font-size:1.10rem!important;
+        margin:1.35rem 0 .80rem 0!important;
+    }
+    .cut-visible-field-label{
+        margin:1.05rem 0 .70rem 0!important;
+        min-height:1.30rem!important;
+        line-height:1.25!important;
+    }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
 def _cut_fmt(value: Any, fmt: str = "{:.2f}") -> str:
     try:
         return fmt.format(float(value))
@@ -3156,9 +3205,7 @@ def _commit_global_parameters_editor() -> None:
         pass
 
 def render_model_inputs(model_preview: Any):
-    st.markdown(
-    '<div class="cut-section-title" style="margin-top:1.05rem; margin-bottom:.70rem;">Model inputs</div>',
-    unsafe_allow_html=True)
+    st.markdown('<div class="cut-section-title">Model inputs</div>', unsafe_allow_html=True)
 
     # -----------------------------
     # Geometry / loads
@@ -5875,8 +5922,9 @@ def mark_stage_animation_auto_x() -> None:
 
 def render_stages_and_reinforcement(model_preview: Any):
     st.markdown(
-    '<div class="cut-section-title" style="margin-top:1.05rem; margin-bottom:.70rem;">Stages and reinforcement</div>',
-    unsafe_allow_html=True)
+        '<div class="cut-section-title" style="margin-top:1.05rem; margin-bottom:.85rem;">Stages and reinforcement</div>',
+        unsafe_allow_html=True
+    )
     base_model = model_preview or build_model()
     H_R = float(base_model.geometry.H_R)
     H_L = float(base_model.geometry.H_L)
@@ -5884,17 +5932,18 @@ def render_stages_and_reinforcement(model_preview: Any):
     left, right = st.columns([0.42, 0.58], gap="large")
     with left:
         st.markdown(
-    '<div style="margin-top:.85rem; margin-bottom:.65rem;">'
-    '<h3 style="margin:0;">Excavation stages</h3>'
-    '</div>',
-    unsafe_allow_html=True
-)
+            '<div class="cut-stage-heading">Excavation stages</div>',
+            unsafe_allow_html=True
+        )
         st.caption(f"Total excavation depth: z_ex = H_R − H_L = {z_ex:.4g} m")
         st.markdown('<div class="cut-visible-field-label">Number of main excavation stages</div>', unsafe_allow_html=True)
-        n = st.number_input("Number of main excavation stages", min_value=1, max_value=30, step=1, key="n_excavation_stages", help="Number of principal excavation levels after Stage 0. Stage 0 is no excavation/no supports; the final stage is locked to z_ex = H_R − H_L.")
+        n = st.number_input("Number of main excavation stages", min_value=1, max_value=30, step=1, key="n_excavation_stages", label_visibility="collapsed", help="Number of principal excavation levels after Stage 0. Stage 0 is no excavation/no supports; the final stage is locked to z_ex = H_R − H_L.")
         st.markdown('<div class="cut-visible-field-label">Intermediate excavation drops between main stages</div>', unsafe_allow_html=True)
-        st.number_input("Intermediate excavation drops between main stages", min_value=0, max_value=20, step=1, key="intermediate_stage_drops", help="Optional lowering steps inserted before each main stage. Example: 4 creates four drops before Stage i, with only supports 1..i−1 active until Stage i is reached.")
-        st.markdown("#### Surcharge staging")
+        st.number_input("Intermediate excavation drops between main stages", min_value=0, max_value=20, step=1, key="intermediate_stage_drops", label_visibility="collapsed", help="Optional lowering steps inserted before each main stage. Example: 4 creates four drops before Stage i, with only supports 1..i−1 active until Stage i is reached.")
+        st.markdown(
+            '<div class="cut-stage-subheading">Surcharge staging</div>',
+            unsafe_allow_html=True
+        )
         qR_options = [f"Stage {i}" for i in range(0, int(n) + 1)] + [f"Stage {int(n)+1} (after final)"]
         if st.session_state.get("stage_q_R_apply", "Stage 0") not in qR_options:
             st.session_state.stage_q_R_apply = "Stage 0"
