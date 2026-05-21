@@ -6435,20 +6435,28 @@ st.markdown("""
 }
 
 @media(max-width:900px){
-    /* Keep Previous and Next side by side on phones, with the dropdown below. */
+    /* Force Previous + Next to stay side-by-side on mobile. */
     .stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"]{
-        display:grid!important;
-        grid-template-columns:1fr 1fr!important;
-        gap:.55rem!important;
-        width:100%!important;
+        display:flex!important;
+        flex-wrap:wrap!important;
+        align-items:stretch!important;
+        row-gap:.55rem!important;
+        column-gap:.55rem!important;
     }
-    .stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div{
-        width:100%!important;
-        min-width:0!important;
-        padding:0!important;
+    .stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(1),
+    .stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(2){
+        flex:1 1 calc(50% - .35rem)!important;
+        min-width:calc(50% - .35rem)!important;
+        width:calc(50% - .35rem)!important;
     }
     .stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(3){
-        grid-column:1 / -1!important;
+        flex:1 1 100%!important;
+        min-width:100%!important;
+        width:100%!important;
+    }
+    .stMarkdown:has(.cut-main-nav-marker) + div[data-testid="stHorizontalBlock"] button{
+        min-height:54px!important;
+        font-weight:700!important;
     }
 
     /* Icon selectors: controlled mobile grids. */
