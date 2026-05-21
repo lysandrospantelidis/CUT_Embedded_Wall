@@ -2749,14 +2749,29 @@ def render_header():
         _qp_page = None
     if isinstance(_qp_page, list):
         _qp_page = _qp_page[0] if _qp_page else None
-    if _qp_page in PAGES and _qp_page != st.session_state.get("active_page", PAGES[0]):
+
+    # Previous/Next use the temporary URL parameter cut_page.
+    # Consume it once, then remove it so the central dropdown can control
+    # the page on the next rerun instead of being forced back by a stale URL.
+    if _qp_page in PAGES:
         st.session_state.active_page = _qp_page
+        st.session_state.active_page_selector = _qp_page
+        try:
+            del st.query_params["cut_page"]
+        except Exception:
+            pass
 
     try:
         current_idx = PAGES.index(st.session_state.get("active_page", PAGES[0]))
     except ValueError:
         current_idx = 0
         st.session_state.active_page = PAGES[0]
+
+    # Initialize the selector once only. Do not overwrite it on every rerun,
+    # because Streamlit has already stored the user's new dropdown choice
+    # before this script reaches render_header().
+    if st.session_state.get("active_page_selector") not in PAGES:
+        st.session_state.active_page_selector = st.session_state.active_page
 
     _prev_disabled = current_idx == 0
     _next_disabled = current_idx >= len(PAGES) - 1
@@ -2769,8 +2784,8 @@ def render_header():
     st.markdown(
         """
         <div class="cut-nav-pair">
-            <a class="{prev_class}" href="{prev_href}">◀ Previous</a>
-            <a class="{next_class}" href="{next_href}">Next ▶</a>
+            <a class="{prev_class}" href="{prev_href}" target="_self">◀ Previous</a>
+            <a class="{next_class}" href="{next_href}" target="_self">Next ▶</a>
         </div>
         """.format(
             prev_class=_prev_class,
@@ -2780,13 +2795,17 @@ def render_header():
         ),
         unsafe_allow_html=True,
     )
-    st.selectbox(
+    selected_page = st.selectbox(
         "Section",
         PAGES,
         index=current_idx,
-        key="active_page",
+        key="active_page_selector",
         label_visibility="collapsed",
     )
+    if selected_page in PAGES and selected_page != st.session_state.get("active_page"):
+        st.session_state.active_page = selected_page
+        st.rerun()
+
 
 
     if st.session_state.reinforcement_type != "No reinforcement":
