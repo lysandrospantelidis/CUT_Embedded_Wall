@@ -2792,29 +2792,20 @@ def render_header():
     _next_href = "#" if _next_disabled else "?cut_page=" + _cut_urlparse.quote(_next_page)
     _prev_class = "cut-nav-btn cut-nav-prev" + (" cut-nav-disabled" if _prev_disabled else "")
     _next_class = "cut-nav-btn cut-nav-next" + (" cut-nav-disabled" if _next_disabled else "")
-
-    nav_cols = st.columns(2, gap="small")
-
-    with nav_cols[0]:
-        if st.button(
-            "◀ Previous",
-            key="cut_prev_page_btn",
-            use_container_width=True,
-            disabled=_prev_disabled,
-        ):
-            st.session_state.active_page = _prev_page
-            st.rerun()
-
-    with nav_cols[1]:
-        if st.button(
-            "Next ▶",
-            key="cut_next_page_btn",
-            use_container_width=True,
-            disabled=_next_disabled,
-        ):
-            st.session_state.active_page = _next_page
-            st.rerun()
-            
+    st.markdown(
+        """
+        <div class="cut-nav-pair">
+            <a class="{prev_class}" href="{prev_href}" target="_self">◀ Previous</a>
+            <a class="{next_class}" href="{next_href}" target="_self">Next ▶</a>
+        </div>
+        """.format(
+            prev_class=_prev_class,
+            prev_href=_prev_href,
+            next_class=_next_class,
+            next_href=_next_href,
+        ),
+        unsafe_allow_html=True,
+    )
     selected_page = st.selectbox(
         "Section",
         PAGES,
