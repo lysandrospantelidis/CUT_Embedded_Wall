@@ -2859,9 +2859,6 @@ def render_header():
             st.session_state.active_page = _next_page
             st.rerun()
 
-    if next_clicked:
-        st.session_state.active_page = _next_page
-        st.rerun()
     selected_page = st.selectbox(
         "Section",
         PAGES,
