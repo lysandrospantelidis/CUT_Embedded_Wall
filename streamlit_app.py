@@ -1195,6 +1195,9 @@ def apply_pending_active_page() -> None:
     pending = st.session_state.pop("_pending_active_page", None)
     if pending in PAGES:
         st.session_state.active_page = pending
+        # Safe here: this function runs near the top of the script, before
+        # the central selectbox with key active_page_selector is instantiated.
+        st.session_state.active_page_selector = pending
 
 
 def init_state() -> None:
@@ -2692,12 +2695,11 @@ def run_solver_now():
     st.session_state.last_result = result
     st.session_state.run_message = f"{result.status}: {result.message}"
 
-    # Navigate immediately after a successful run without losing the stored
-    # result/model.  Using only _pending_active_page is too late here because
-    # apply_pending_active_page() has already executed near the top of the
-    # script for this run.
-    st.session_state.active_page = "Plots"
-    st.session_state.active_page_selector = "Plots"
+    # Navigate after a successful run without touching the selectbox key after
+    # it has been instantiated in this run.  The pending page is applied safely
+    # at the top of the next rerun, before the widget is created.
+    request_active_page("Plots")
+    st.rerun()
 
 
 def cached_solve(model):
