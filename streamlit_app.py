@@ -2751,11 +2751,7 @@ def render_header():
         _qp_page = _qp_page[0] if _qp_page else None
     if _qp_page in PAGES and _qp_page != st.session_state.get("active_page", PAGES[0]):
         st.session_state.active_page = _qp_page
-        try:
-            del st.query_params["cut_page"]
-        except Exception:
-            pass
-        
+
     try:
         current_idx = PAGES.index(st.session_state.get("active_page", PAGES[0]))
     except ValueError:
