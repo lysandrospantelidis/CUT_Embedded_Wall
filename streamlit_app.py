@@ -2800,7 +2800,6 @@ def render_header():
     st.markdown(
         f"""<div class="header-actions">
     <a class="home-link" href="{HOME_URL}" target="_blank"><img src="{home_img}" alt="home">Home</a>
-    {description_link}
     <details class="about-details"><summary>About⌄</summary><div>{about_html}</div></details>
     </div>""",
         unsafe_allow_html=True,
