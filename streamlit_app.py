@@ -2784,10 +2784,22 @@ def render_header():
     about_html = html.escape(about_text()).replace("\n", "<br>")
     description_pdf = asset_path("assets", "CUT_Embedded_Wall_Description.pdf")
 
+    if description_pdf.exists():
+        description_link = (
+            f'<a class="home-link" '
+            f'href="data:application/pdf;base64,{base64.b64encode(description_pdf.read_bytes()).decode("ascii")}" '
+            f'target="_blank">Description</a>'
+        )
+    else:
+        description_link = (
+            '<span class="home-link" title="CUT_Embedded_Wall_Description.pdf not found">'
+            'Description</span>'
+        )
+
     st.markdown(
         f"""<div class="header-actions">
     <a class="home-link" href="{HOME_URL}" target="_blank"><img src="{home_img}" alt="home">Home</a>
-    <a class="home-link" href="data:application/pdf;base64,{base64.b64encode(description_pdf.read_bytes()).decode("ascii")}" target="_blank">Description</a>
+    {description_link}
     <details class="about-details"><summary>About⌄</summary><div>{about_html}</div></details>
     </div>""",
         unsafe_allow_html=True,
