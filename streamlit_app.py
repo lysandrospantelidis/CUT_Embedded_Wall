@@ -2738,35 +2738,55 @@ def render_header():
 
     stat_cards()
 
-    # Compact navigation: one section selector avoids long horizontal button rows
-    # and keeps labels readable on narrower screens.
+    # Compact navigation. Previous/Next are rendered as an HTML flex pair,
+    # not as Streamlit columns, so they stay side-by-side on mobile. The
+    # section dropdown remains below them.
+    import urllib.parse as _cut_urlparse
+
+    try:
+        _qp_page = st.query_params.get("cut_page", None)
+    except Exception:
+        _qp_page = None
+    if isinstance(_qp_page, list):
+        _qp_page = _qp_page[0] if _qp_page else None
+    if _qp_page in PAGES and _qp_page != st.session_state.get("active_page", PAGES[0]):
+        st.session_state.active_page = _qp_page
+
     try:
         current_idx = PAGES.index(st.session_state.get("active_page", PAGES[0]))
     except ValueError:
         current_idx = 0
         st.session_state.active_page = PAGES[0]
 
-    st.markdown('<div class="cut-main-nav-marker"></div>', unsafe_allow_html=True)
-    nav_prev_col, nav_next_col, nav_select_col = st.columns([1.15, 1.15, 5.7], gap="small")
-    with nav_prev_col:
-        if st.button("◀ Previous", key="nav_prev", use_container_width=True, disabled=current_idx == 0):
-            st.session_state.active_page = PAGES[max(0, current_idx - 1)]
-            st.rerun()
-    # Important: navigation buttons must update active_page before the selectbox
-    # with key="active_page" is instantiated in this rerun. Otherwise Streamlit
-    # raises: st.session_state.active_page cannot be modified after widget creation.
-    with nav_next_col:
-        if st.button("Next ▶", key="nav_next", use_container_width=True, disabled=current_idx >= len(PAGES) - 1):
-            st.session_state.active_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
-            st.rerun()
-    with nav_select_col:
-        st.selectbox(
-            "Section",
-            PAGES,
-            index=current_idx,
-            key="active_page",
-            label_visibility="collapsed",
-        )
+    _prev_disabled = current_idx == 0
+    _next_disabled = current_idx >= len(PAGES) - 1
+    _prev_page = PAGES[max(0, current_idx - 1)]
+    _next_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
+    _prev_href = "#" if _prev_disabled else "?cut_page=" + _cut_urlparse.quote(_prev_page)
+    _next_href = "#" if _next_disabled else "?cut_page=" + _cut_urlparse.quote(_next_page)
+    _prev_class = "cut-nav-btn cut-nav-prev" + (" cut-nav-disabled" if _prev_disabled else "")
+    _next_class = "cut-nav-btn cut-nav-next" + (" cut-nav-disabled" if _next_disabled else "")
+    st.markdown(
+        """
+        <div class="cut-nav-pair">
+            <a class="{prev_class}" href="{prev_href}">◀ Previous</a>
+            <a class="{next_class}" href="{next_href}">Next ▶</a>
+        </div>
+        """.format(
+            prev_class=_prev_class,
+            prev_href=_prev_href,
+            next_class=_next_class,
+            next_href=_next_href,
+        ),
+        unsafe_allow_html=True,
+    )
+    st.selectbox(
+        "Section",
+        PAGES,
+        index=current_idx,
+        key="active_page",
+        label_visibility="collapsed",
+    )
 
 
     if st.session_state.reinforcement_type != "No reinforcement":
@@ -6670,6 +6690,52 @@ st.markdown("""
     font-weight:800!important;justify-content:center!important;
 }
 .home-link:hover,.about-details summary:hover{background:linear-gradient(180deg,#dcecff,#cfe3f8)!important;border-color:#5d94c8!important;}
+
+
+/* Surgical Previous/Next navigation: fixed two-button group on every screen. */
+.cut-nav-pair{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    gap:.65rem!important;
+    width:100%!important;
+    margin:.55rem 0 .65rem 0!important;
+}
+.cut-nav-pair .cut-nav-btn{
+    flex:1 1 0!important;
+    width:50%!important;
+    min-width:0!important;
+    min-height:54px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border-radius:13px!important;
+    text-decoration:none!important;
+    font-weight:800!important;
+    font-size:1.02rem!important;
+    box-shadow:0 5px 14px rgba(20,65,110,.10)!important;
+}
+.cut-nav-pair .cut-nav-prev{
+    background:linear-gradient(180deg,#fff3f3,#f7dddd)!important;
+    border:1px solid #e2a0a0!important;
+    color:#7b2323!important;
+}
+.cut-nav-pair .cut-nav-next{
+    background:linear-gradient(180deg,#f0fbf2,#dff4e5)!important;
+    border:1px solid #92c99f!important;
+    color:#1f6b34!important;
+}
+.cut-nav-pair .cut-nav-prev:hover{background:linear-gradient(180deg,#ffe8e8,#f1cccc)!important;border-color:#d37a7a!important;}
+.cut-nav-pair .cut-nav-next:hover{background:linear-gradient(180deg,#e3f8e8,#ccefd6)!important;border-color:#72b983!important;}
+.cut-nav-pair .cut-nav-disabled{
+    opacity:.55!important;
+    pointer-events:none!important;
+    cursor:not-allowed!important;
+}
+@media(max-width:900px){
+    .cut-nav-pair{gap:.45rem!important;}
+    .cut-nav-pair .cut-nav-btn{font-size:.98rem!important;min-height:52px!important;}
+}
 
 /* Previous / Next buttons: common colour. */
 div[data-testid="stButton"] button[kind="secondary"]{
