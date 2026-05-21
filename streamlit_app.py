@@ -1191,11 +1191,10 @@ def request_active_page(page: str) -> None:
 
 
 def apply_pending_active_page() -> None:
-    """Apply deferred navigation before any page selector widget is created."""
+    """Apply deferred navigation before any widget using active_page is created."""
     pending = st.session_state.pop("_pending_active_page", None)
     if pending in PAGES:
         st.session_state.active_page = pending
-        st.session_state.active_page_selector = pending
         # Safe here: this function runs near the top of the script, before
         # the central selectbox with key active_page_selector is instantiated.
         st.session_state.active_page_selector = pending
@@ -2717,13 +2716,6 @@ def _short(text: str, n: int = 42) -> str:
     return text if len(text) <= n else text[:n-1] + "…"
 
 
-def _active_page_selector_changed() -> None:
-    """Keep the routed page synchronized with the central dropdown."""
-    selected = st.session_state.get("active_page_selector")
-    if selected in PAGES:
-        st.session_state.active_page = selected
-
-
 def stat_cards() -> None:
     left_h = height_from_df(st.session_state.left_layers_df); right_h = height_from_df(st.session_state.right_layers_df)
     vals = [
@@ -2757,45 +2749,48 @@ def render_header():
 
     stat_cards()
 
-    # Compact navigation. Previous/Next are Streamlit buttons, not HTML links.
-    # This avoids browser reloads, so last_model/last_result stay in session_state
-    # when moving between pages after a successful solver run.
+    # Compact navigation without browser reloads.
     try:
         current_idx = PAGES.index(st.session_state.get("active_page", PAGES[0]))
     except ValueError:
         current_idx = 0
         st.session_state.active_page = PAGES[0]
 
-    if st.session_state.get("active_page_selector") not in PAGES:
-        st.session_state.active_page_selector = st.session_state.active_page
+    nav_cols = st.columns(2, gap="small")
 
-    _prev_disabled = current_idx == 0
-    _next_disabled = current_idx >= len(PAGES) - 1
-    _prev_page = PAGES[max(0, current_idx - 1)]
-    _next_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
-
-    st.markdown('<div class="cut-main-nav-marker"></div>', unsafe_allow_html=True)
-    _nav_cols = st.columns(2, gap="small")
-    with _nav_cols[0]:
-        if st.button("◀ Previous", key="cut_prev_page_btn", use_container_width=True, disabled=_prev_disabled):
-            st.session_state.active_page = _prev_page
-            st.session_state.active_page_selector = _prev_page
-            st.rerun()
-    with _nav_cols[1]:
-        if st.button("Next ▶", key="cut_next_page_btn", use_container_width=True, disabled=_next_disabled):
-            st.session_state.active_page = _next_page
-            st.session_state.active_page_selector = _next_page
+    with nav_cols[0]:
+        if st.button(
+            "◀ Previous",
+            key="cut_prev_page_btn",
+            use_container_width=True,
+            disabled=(current_idx == 0),
+        ):
+            st.session_state.active_page = PAGES[max(0, current_idx - 1)]
             st.rerun()
 
-    st.selectbox(
+    with nav_cols[1]:
+        if st.button(
+            "Next ▶",
+            key="cut_next_page_btn",
+            use_container_width=True,
+            disabled=(current_idx >= len(PAGES) - 1),
+        ):
+            st.session_state.active_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
+            st.rerun()
+
+    current_idx = PAGES.index(st.session_state.get("active_page", PAGES[0]))
+
+    selected_page = st.selectbox(
         "Section",
         PAGES,
         index=current_idx,
         key="active_page_selector",
         label_visibility="collapsed",
-        on_change=_active_page_selector_changed,
     )
 
+    if selected_page in PAGES and selected_page != st.session_state.get("active_page"):
+        st.session_state.active_page = selected_page
+        st.rerun()
 
     if st.session_state.reinforcement_type != "No reinforcement":
         st.markdown(
