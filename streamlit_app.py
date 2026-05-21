@@ -1175,13 +1175,14 @@ PERSISTENT_INPUT_KEYS = {
 
 
 def preserve_persistent_inputs() -> None:
-    """Prevent Streamlit from deleting widget state across pages.
-
-    This must be called only before widgets are rendered.
     """
-    for key in list(PERSISTENT_INPUT_KEYS):
-        if key in st.session_state:
-            st.session_state[key] = st.session_state[key]
+    Prevent Streamlit from deleting widget state across pages.
+    Touch all persistent keys so Streamlit keeps them alive
+    even if the widgets are not rendered in the current page.
+    """
+    for k in PERSISTENT_INPUT_KEYS:
+        if k in st.session_state:
+            st.session_state[k] = st.session_state[k]
 
 
 def request_active_page(page: str) -> None:
