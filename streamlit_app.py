@@ -5949,9 +5949,12 @@ def render_stages_and_reinforcement(model_preview: Any):
             st.session_state.stage_q_R_apply = "Stage 0"
         qcols = st.columns(2)
         with qcols[0]:
-            st.selectbox("Apply q_L from", ["Stage N (final)", "Stage N+1 (after final)"], key="stage_q_L_apply", help="Select whether the excavation-side surcharge q_L is present at the final excavation stage or is added afterward as a separate post-excavation loading stage. Default: Stage N+1.")
+            st.markdown('<div class="cut-visible-field-label">Apply q_L at stage:</div>', unsafe_allow_html=True)
+            st.selectbox("Apply q_L at stage:", ["Stage N (final)", "Stage N+1 (after final)"], key="stage_q_L_apply", label_visibility="collapsed", help="Select whether the excavation-side surcharge q_L is present at the final excavation stage or is added afterward as a separate post-excavation loading stage. Default: Stage N+1.")
+
         with qcols[1]:
-            st.selectbox("Apply q_R from", qR_options, key="stage_q_R_apply", help="Construction stage from which the retained-side surcharge q_R becomes active. Stage 0 means it exists from the initial ground condition.")
+            st.markdown('<div class="cut-visible-field-label">Apply q_R at stage:</div>', unsafe_allow_html=True)
+            st.selectbox("Apply q_R at stage:", qR_options, key="stage_q_R_apply", label_visibility="collapsed", help="Construction stage from which the retained-side surcharge q_R becomes active. Stage 0 means it exists from the initial ground condition.")
         stage_df = normalize_stage_df(st.session_state.get("stages_df"), H_R, H_L, int(n))
         locked = stage_df.copy()
         locked["Locked final"] = [False] * (len(locked)-1) + [True]
