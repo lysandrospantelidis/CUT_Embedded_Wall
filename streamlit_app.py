@@ -3655,7 +3655,7 @@ def render_reinforcement(model_preview: Any):
 
         show_fig(
             plot_reinforcement(fresh_model, st.session_state.last_result),
-            width=750
+            width=680
         )
 
     except Exception:
@@ -6069,7 +6069,11 @@ def render_stages_and_reinforcement(model_preview: Any):
     H_R = float(base_model.geometry.H_R)
     H_L = float(base_model.geometry.H_L)
     z_ex = max(0.0, H_R - H_L)
-    left, right = st.columns([0.42, 0.58], gap="large")
+    if st.session_state.get("reinforcement_type", "No reinforcement") == "No reinforcement":
+        left, right = st.columns([0.42, 0.58], gap="large")
+    else:
+        left = st.container()
+        right = st.container()
     with left:
         st.markdown(
             '<div class="cut-stage-heading">Excavation stages</div>',
