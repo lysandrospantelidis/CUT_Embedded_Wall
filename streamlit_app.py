@@ -2788,21 +2788,24 @@ def render_header():
     _next_disabled = current_idx >= len(PAGES) - 1
     _prev_page = PAGES[max(0, current_idx - 1)]
     _next_page = PAGES[min(len(PAGES) - 1, current_idx + 1)]
-    # Use real Streamlit buttons, not HTML links.  HTML links reload the app
-    # on Streamlit Cloud and can start a fresh session, which loses last_result
-    # and makes Results/Plots look empty after changing pages.
-    st.markdown('<div class="cut-nav-button-row-marker"></div>', unsafe_allow_html=True)
-    nav_prev_col, nav_next_col = st.columns(2, gap="small")
-    with nav_prev_col:
-        if st.button("◀ Previous", key="cut_prev_page_btn", disabled=_prev_disabled, use_container_width=True):
-            st.session_state.active_page = _prev_page
-            st.session_state.active_page_selector = _prev_page
-            st.rerun()
-    with nav_next_col:
-        if st.button("Next ▶", key="cut_next_page_btn", disabled=_next_disabled, use_container_width=True):
-            st.session_state.active_page = _next_page
-            st.session_state.active_page_selector = _next_page
-            st.rerun()
+    _prev_href = "#" if _prev_disabled else "?cut_page=" + _cut_urlparse.quote(_prev_page)
+    _next_href = "#" if _next_disabled else "?cut_page=" + _cut_urlparse.quote(_next_page)
+    _prev_class = "cut-nav-btn cut-nav-prev" + (" cut-nav-disabled" if _prev_disabled else "")
+    _next_class = "cut-nav-btn cut-nav-next" + (" cut-nav-disabled" if _next_disabled else "")
+    st.markdown(
+        """
+        <div class="cut-nav-pair">
+            <a class="{prev_class}" href="{prev_href}" target="_self">◀ Previous</a>
+            <a class="{next_class}" href="{next_href}" target="_self">Next ▶</a>
+        </div>
+        """.format(
+            prev_class=_prev_class,
+            prev_href=_prev_href,
+            next_class=_next_class,
+            next_href=_next_href,
+        ),
+        unsafe_allow_html=True,
+    )
     selected_page = st.selectbox(
         "Section",
         PAGES,
@@ -3101,50 +3104,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-
-# v7.4 FIX13: Previous/Next are real Streamlit buttons, not HTML links.
-# This preserves session_state last_model/last_result when moving between pages.
-st.markdown("""
-<style>
-/* Force the two Streamlit navigation buttons to remain one row on phones. */
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"]{
-    display:flex!important;
-    flex-direction:row!important;
-    flex-wrap:nowrap!important;
-    gap:.65rem!important;
-    width:100%!important;
-    margin:.55rem 0 .65rem 0!important;
-}
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div{
-    flex:1 1 0!important;
-    width:50%!important;
-    min-width:0!important;
-    max-width:none!important;
-}
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] button{
-    min-height:54px!important;
-    border-radius:13px!important;
-    font-weight:800!important;
-    font-size:1.02rem!important;
-    box-shadow:0 5px 14px rgba(20,65,110,.10)!important;
-}
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(1) button{
-    background:linear-gradient(180deg,#fff3f3,#f7dddd)!important;
-    border:1px solid #e2a0a0!important;
-    color:#7b2323!important;
-}
-div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] > div:nth-child(2) button{
-    background:linear-gradient(180deg,#f0fbf2,#dff4e5)!important;
-    border:1px solid #92c99f!important;
-    color:#1f6b34!important;
-}
-@media(max-width:900px){
-    div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"]{gap:.45rem!important;}
-    div[data-testid="stVerticalBlock"] > div:has(.cut-nav-button-row-marker) + div[data-testid="stHorizontalBlock"] button{font-size:.98rem!important;min-height:52px!important;}
-}
-</style>
-""", unsafe_allow_html=True)
 
 def _cut_fmt(value: Any, fmt: str = "{:.2f}") -> str:
     try:
