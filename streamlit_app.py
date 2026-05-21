@@ -2783,20 +2783,11 @@ def render_header():
 
     about_html = html.escape(about_text()).replace("\n", "<br>")
 
-    description_pdf = asset_path("assets", "CUT_Embedded_Wall_Description.pdf")
-
-    if description_pdf.exists():
-        description_b64 = base64.b64encode(description_pdf.read_bytes()).decode("ascii")
-        description_link = (
-            f'<a class="home-link" '
-            f'href="data:application/pdf;base64,{description_b64}" '
-            f'target="_blank">Description</a>'
-        )
-    else:
-        description_link = (
-            '<span class="home-link" title="CUT_Embedded_Wall_Description.pdf not found">'
-            'Description</span>'
-        )
+    description_link = (
+        '<a class="home-link" '
+        'href="https://raw.githubusercontent.com/lysandrospantelidis/CUT_Embedded_Wall/main/assets/CUT_Embedded_Wall_Description.pdf" '
+        'target="_blank">Description</a>'
+    )
 
     st.markdown(
         f"""<div class="header-actions">
