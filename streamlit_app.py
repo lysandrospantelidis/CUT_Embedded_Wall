@@ -2782,11 +2782,14 @@ def render_header():
 """, unsafe_allow_html=True)
 
     about_html = html.escape(about_text()).replace("\n", "<br>")
+    description_pdf = asset_path("assets", "CUT_Embedded_Wall_Description.pdf")
+
     st.markdown(
         f"""<div class="header-actions">
-<a class="home-link" href="{HOME_URL}" target="_blank"><img src="{home_img}" alt="home">Home</a>
-<details class="about-details"><summary>About⌄</summary><div>{about_html}</div></details>
-</div>""",
+    <a class="home-link" href="{HOME_URL}" target="_blank"><img src="{home_img}" alt="home">Home</a>
+    <a class="home-link" href="data:application/pdf;base64,{base64.b64encode(description_pdf.read_bytes()).decode("ascii")}" target="_blank">Description</a>
+    <details class="about-details"><summary>About⌄</summary><div>{about_html}</div></details>
+    </div>""",
         unsafe_allow_html=True,
     )
 
@@ -3671,7 +3674,17 @@ def render_run():
     # ✅ Solver selection
     # -------------------------------------------------------
     st.markdown("#### Solver selection")
-    image_selector(SOLVER_CARDS, "solver_display", "Run & solver monitor", 5)
+
+    solver_cards_to_show = SOLVER_CARDS
+    if st.session_state.reinforcement_type != "No reinforcement":
+        solver_cards_to_show = [
+            card for card in SOLVER_CARDS
+            if card[1] in REINFORCEMENT_ALLOWED_SOLVERS
+        ]
+        if st.session_state.solver_display not in REINFORCEMENT_ALLOWED_SOLVERS:
+            st.session_state.solver_display = REINFORCEMENT_REQUIRED_SOLVER
+
+    image_selector(solver_cards_to_show, "solver_display", "Run & solver monitor", 2)
 
     # -------------------------------------------------------
     # ✅ Numerical controls
