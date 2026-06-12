@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-CUT Embedded Wall Streamlit v9.1.1
+CUT Embedded Wall Streamlit v10
 Professional single-pane Streamlit interface aligned with the desktop GUI.
 """
 from __future__ import annotations
@@ -35,7 +35,7 @@ if str(APP_DIR) not in sys.path:
 
 import CUT_Embedded_Wall_SOLVER_DISPATCHER_v6 as solvers
 
-APP_VERSION = "CUT Embedded Wall v9.1.1"
+APP_VERSION = "CUT Embedded Wall v10"
 HOME_URL = "https://cut-apps.streamlit.app/"
 REINFORCEMENT_REQUIRED_SOLVER = "Flexible wall - Fixed base (differential equation)"
 REINFORCEMENT_ALLOWED_SOLVERS = {
@@ -1165,6 +1165,8 @@ PERSISTENT_INPUT_KEYS = {
     "ui_stage_anim_x_max",
     "stage_anim_auto_x_pending",
     "stage_anim_results",
+    "stage_anim_signature",
+    "run_solver_with_stages",
     "water_anim_summary",
     "water_anim_levels",
     "last_model",
@@ -1213,6 +1215,8 @@ def init_state() -> None:
         "stage_anim_x_max": None,
         "stage_anim_auto_x_pending": False,
         "stage_anim_results": [],
+        "stage_anim_signature": None,
+        "run_solver_with_stages": False,
         "solver_display": "Flexible wall - Fixed base (closed-form bending)",
         "reinforcement_type": "No reinforcement",
         "beta_L": 0.0, "beta_R": 0.0, "q_L": 0.0, "q_R": 0.0,
@@ -2578,6 +2582,56 @@ def support_force_for_display(support: dict[str, Any], result: Any) -> float:
     return estimate_support_force_from_model_result(support, result)
 
 
+
+
+def support_label_force_value(support: dict[str, Any], result: Any = None) -> tuple[float, str]:
+    """Return the single force quantity used in support labels.
+
+    Anchors/tiebacks are labelled by axial force F; props and MSE elements by
+    horizontal reaction Fh.  This same helper is used in the reinforcement
+    preview and in the stages animation, so both tabs report the same quantity.
+    """
+    support = dict(support or {})
+    typ = str(support.get("type", "")).strip().lower()
+    use_axial = ("anchor" in typ) or ("tie" in typ)
+    label = "F" if use_axial else "Fh"
+    try:
+        value = float(support_force_for_display(support, result))
+    except Exception:
+        value = float("nan")
+    if not math.isfinite(value):
+        return value, label
+    try:
+        theta = math.radians(float(support.get("theta_deg", 0.0) or 0.0))
+        cth = max(1.0e-12, abs(math.cos(theta)))
+        if use_axial:
+            return abs(value) / cth, label
+    except Exception:
+        pass
+    return value, label
+
+
+def support_label_text(support: dict[str, Any], result: Any = None, multiline: bool = False) -> str:
+    code = str((support or {}).get("code", "")).strip() or "support"
+    value, label = support_label_force_value(support, result)
+    if math.isfinite(value):
+        return f"{code}<br>{label}={value:.1f} kN/m" if multiline else f"{code}: {label}={value:.3g} kN/m"
+    return code
+
+
+def final_staged_result_source() -> tuple[Any, Any]:
+    """Return final stored staged model/result when it is the current solution."""
+    try:
+        stored = list(st.session_state.get("stage_anim_results", []) or [])
+        if stored:
+            base = st.session_state.get("last_model")
+            if stage_animation_cache_is_current(base):
+                item = stored[-1]
+                return item.get("model"), item.get("result")
+    except Exception:
+        pass
+    return st.session_state.get("last_model"), st.session_state.get("last_result")
+
 def plot_reinforcement(model: Any, result: Any = None):
     H_R = float(model.geometry.H_R)
     H_L = float(model.geometry.H_L)
@@ -2621,16 +2675,14 @@ def plot_reinforcement(model: Any, result: Any = None):
 
             ax.plot([-L, 0], [z, z], color="darkorange", linewidth=1.8, zorder=7)
             ax.plot(0, z, "s", color="darkorange", markersize=4, zorder=8)
-            force = support_force_for_display(s, result)
-            force_label = f"{code}: {force:.3g} kN/m" if math.isfinite(force) else code
+            force_label = support_label_text(s, result)
             ax.text(-L, z, force_label, ha="right", va="center", fontsize=7, color="darkorange")
 
         elif typ == "mse":
             L = max(float(s.get("L", 0.0) or 0.0), 0.1 * xr)
 
             ax.plot([0, L], [z, z], color="purple", linewidth=1.5, zorder=7)
-            force = support_force_for_display(s, result)
-            force_label = f"{code}: {force:.3g} kN/m" if math.isfinite(force) else code
+            force_label = support_label_text(s, result)
             ax.text(0.5 * L, z, force_label, ha="center", va="bottom", fontsize=7, color="purple")
 
         elif typ == "anchor":
@@ -2652,20 +2704,22 @@ def plot_reinforcement(model: Any, result: Any = None):
             ax.plot(0, z, "o", color="#2563eb", markersize=4.5, zorder=8)
             ax.plot(x_free, y_free, "o", color="#2563eb", markersize=3.5, zorder=8)
 
-            force = support_force_for_display(s, result)
-            force_label = f"{code}: {force:.3g} kN/m" if math.isfinite(force) else code
+            force_label = support_label_text(s, result)
 
+            label_x = max(x_end, x_free, 0.0) + max(0.25, 0.035 * H_R)
+            label_y = y_end
             ax.text(
-                x_end + 0.10,
-                y_end,
+                label_x,
+                label_y,
                 force_label,
                 ha="left",
                 va="center",
                 fontsize=7,
-                color="#2563eb"
+                color="#2563eb",
+                bbox=dict(facecolor="white", edgecolor="none", alpha=0.78, pad=1.2),
             )
 
-    ax.set_xlim(xl * 1.10, xr * 1.25)
+    ax.set_xlim(xl * 1.10, xr * 1.40)
     ax.set_ylim(H_R + 0.8, -0.8)
 
     ax.set_aspect("auto")
@@ -2695,24 +2749,48 @@ def run_solver_now():
     st.session_state.last_model = model
     st.session_state.last_result = None
 
-    progress = st.progress(0.0, text="Running solver...")
+    if bool(st.session_state.get("run_solver_with_stages", False)):
+        progress = st.progress(0.0, text="Running staged excavation sequence...")
+        stored, signature = solve_staged_excavation_sequence(model, progress=progress)
+        progress.progress(1.0, text="Completed")
 
-    def cb(info):
-        try:
-            progress.progress(
-                max(0.0, min(1.0, float(info.get("fraction", 0.0)))),
-                text=str(info.get("message", "running"))
-            )
-        except Exception:
-            pass
+        if not stored:
+            raise RuntimeError("No staged excavation frames were generated.")
 
-    result = cached_solve(model)
+        final_item = stored[-1]
+        final_model = final_item.get("model", model)
+        final_result = final_item.get("result")
+        if final_result is None:
+            raise RuntimeError("The final staged excavation frame did not return a solver result.")
 
-    progress.progress(1.0, text="Completed")
+        st.session_state.stage_anim_results = stored
+        st.session_state.stage_anim_signature = signature
+        st.session_state.last_model = final_model
+        st.session_state.last_result = final_result
+        st.session_state.run_message = (
+            f"{getattr(final_result, 'status', '')}: {getattr(final_result, 'message', '')} "
+            f"({len(stored)} staged frame(s) solved and stored for Stages animation)"
+        )
 
-    st.session_state.last_model = model
-    st.session_state.last_result = result
-    st.session_state.run_message = f"{result.status}: {result.message}"
+        auto_x_min, auto_x_max = smart_stage_animation_x_range(
+            stored,
+            WATER_PLOT_OPTIONS.get(st.session_state.get("stage_anim_plot_type", "Total horizontal pressure"), "pressure"),
+            final_result,
+        )
+        st.session_state.stage_anim_x_min = auto_x_min
+        st.session_state.stage_anim_x_max = auto_x_max
+        st.session_state.pop("ui_stage_anim_x_min", None)
+        st.session_state.pop("ui_stage_anim_x_max", None)
+        st.session_state.ui_stage_anim_x_min = auto_x_min
+        st.session_state.ui_stage_anim_x_max = auto_x_max
+    else:
+        progress = st.progress(0.0, text="Running solver...")
+        result = cached_solve(model)
+        progress.progress(1.0, text="Completed")
+
+        st.session_state.last_model = model
+        st.session_state.last_result = result
+        st.session_state.run_message = f"{result.status}: {result.message}"
 
     # Navigate after a successful run without touching the selectbox key after
     # it has been instantiated in this run.  The pending page is applied safely
@@ -3669,11 +3747,14 @@ def render_reinforcement(model_preview: Any):
             st.session_state.reinf_dfs[rtype] = preview_df
 
         fresh_model = build_model()
+        result_model, result_for_labels = final_staged_result_source()
+        if result_model is not None:
+            fresh_model = result_model
 
         st.markdown("#### Reinforcement preview")
 
         show_fig(
-            plot_reinforcement(fresh_model, st.session_state.last_result),
+            plot_reinforcement(fresh_model, result_for_labels),
             width=680
         )
 
@@ -3816,6 +3897,18 @@ def render_run():
             "At every release level, k_y and k_θ are multiplied by this value. Lower values are faster/more aggressive; "
             "higher values are smoother but slower."
         )
+
+    # -------------------------------------------------------
+    # ✅ Run mode
+    # -------------------------------------------------------
+    st.checkbox(
+        "Run construction stages and store them for Stages animation",
+        key="run_solver_with_stages",
+        help=(
+            "If enabled, the Run button solves the full staged excavation path. "
+            "The final frame becomes the main result, and all frames are reused by the Stages animation page."
+        ),
+    )
 
     # -------------------------------------------------------
     # ✅ Run button (with spinner)
@@ -4263,18 +4356,15 @@ def _support_results_dataframe(model: Any, result: Any) -> pd.DataFrame:
             code = str(support.get("code", f"S{i+1}"))
             z = float(support.get("z", 0.0) or 0.0)
 
-            if code in reported:
-                force = float(reported[code])
-                source = "solver"
-            else:
-                force = support_force_for_display(support, result)
-                source = "estimated"
+            force, label_name = support_label_force_value(support, result)
+            source = "solver" if code in reported else "estimated"
 
             rows.append({
                 "Support": code,
                 "(z, force)": f"({fmt_num(z)}, {fmt_num(force)} kN/m)",
                 "z (m)": z,
                 "Force (kN/m)": force,
+                "Quantity": label_name,
                 "Source": source,
             })
 
@@ -4807,11 +4897,21 @@ def build_water_animation_levels(
     z_final_right: float,
     n_steps: int,
     mode: str,
+    z_start_left: float | None = None,
+    z_start_right: float | None = None,
 ) -> list[tuple[float, float]]:
-    """Return water levels [(z_w_L, z_w_R), ...]."""
+    """Return water levels [(z_w_L, z_w_R), ...].
+
+    The first frame represents the input water levels.  The water sweep then
+    varies only z_w on copies of the last solved model, so a staged final state
+    is not replaced by a fresh one-stage excavation model.
+    """
     n_steps = max(2, int(n_steps))
     z_left_surface = float(H_R) - float(H_L)
-    z0 = float(H_R)
+    z_start_left = float(H_R) if z_start_left is None else float(z_start_left)
+    z_start_right = float(H_R) if z_start_right is None else float(z_start_right)
+    z_start_left = max(float(z_start_left), z_left_surface)
+    z_start_right = max(float(z_start_right), 0.0)
     z_final_left = max(float(z_final_left), z_left_surface)
     z_final_right = max(float(z_final_right), 0.0)
     rows = []
@@ -4819,20 +4919,19 @@ def build_water_animation_levels(
     if mode == "Simultaneous proportional rise":
         for i in range(n_steps):
             t = i / max(1, n_steps - 1)
-            zL = z0 + t * (z_final_left - z0)
-            zR = z0 + t * (z_final_right - z0)
+            zL = z_start_left + t * (z_final_left - z_start_left)
+            zR = z_start_right + t * (z_final_right - z_start_right)
             rows.append((zL, zR))
     else:
-        total_rise = max(z0 - z_final_left, z0 - z_final_right, 0.0)
+        total_rise = max(z_start_left - z_final_left, z_start_right - z_final_right, 0.0)
         for i in range(n_steps):
             t = i / max(1, n_steps - 1)
             rise = t * total_rise
-            zL = max(z_final_left, z0 - rise)
-            zR = max(z_final_right, z0 - rise)
+            zL = max(z_final_left, z_start_left - rise)
+            zR = max(z_final_right, z_start_right - rise)
             rows.append((zL, zR))
 
     return rows
-
 
 
 def _animation_solver_water_levels(
@@ -5583,46 +5682,65 @@ def render_water_animation():
     quantity = WATER_PLOT_OPTIONS[quantity_name]
 
     if st.button("Run water level animation", key="run_water_animation", type="primary", use_container_width=True):
-        levels = build_water_animation_levels(H_R, H_L, float(z_final_left), float(z_final_right), int(n_steps), str(mode))
-        progress = st.progress(0.0, text="Running water-level sequence...")
+        # Start from the current input water levels, but keep the mechanical
+        # basis of the last solved model.  This avoids re-solving a fresh
+        # non-staged wall after a staged run.
+        start_zL = float(st.session_state.get("z_w_L", getattr(base_model.left, "z_w", H_R)))
+        start_zR = float(st.session_state.get("z_w_R", getattr(base_model.right, "z_w", H_R)))
+        levels = build_water_animation_levels(
+            H_R, H_L, float(z_final_left), float(z_final_right), int(n_steps), str(mode),
+            z_start_left=start_zL, z_start_right=start_zR,
+        )
+        progress = st.progress(0.0, text="Running water-level sequence from the last solved state...")
         stored_items = []
         summary_base = []
-        old_zL = st.session_state.z_w_L
-        old_zR = st.session_state.z_w_R
-        try:
-            for i, (zL, zR) in enumerate(levels):
-                progress.progress((i + 1) / len(levels), text=f"Step {i + 1}/{len(levels)}")
-                zL_solver, zR_solver = _animation_solver_water_levels(
-                    float(zL),
-                    float(zR),
-                    H_R,
-                    H_L,
-                )
+        previous_result = base_result
+        previous_model = deepcopy(base_model)
 
-                st.session_state.z_w_L = zL_solver
-                st.session_state.z_w_R = zR_solver
+        for i, (zL, zR) in enumerate(levels):
+            progress.progress((i + 1) / len(levels), text=f"Step {i + 1}/{len(levels)}")
+            zL_solver, zR_solver = _animation_solver_water_levels(
+                float(zL),
+                float(zR),
+                H_R,
+                H_L,
+            )
 
-                model_i = build_model()
-                result_i = cached_solve(model_i)
+            model_i = deepcopy(previous_model)
+            try:
+                model_i.left.z_w = float(zL_solver)
+                model_i.right.z_w = float(zR_solver)
+                if previous_result is not None:
+                    model_i.initial_deflection = list(getattr(previous_result, "deflection", []) or [])
+            except Exception:
+                pass
 
-                stored_items.append({
-                    "step": i + 1,
-                    "z_w_L": float(zL),
-                    "z_w_R": float(zR),
-                    "z_w_L_solver": float(zL_solver),
-                    "z_w_R_solver": float(zR_solver),
-                    "model": model_i,
-                    "result": result_i,
-                })
+            result_i = cached_solve(model_i)
+            previous_model = model_i
+            previous_result = result_i
 
-                summary_base.append({
-                    "Step": i + 1,
-                    "z_w_L (m)": float(zL),
-                    "z_w_R (m)": float(zR),
-                })
-        finally:
-            st.session_state.z_w_L = old_zL
-            st.session_state.z_w_R = old_zR
+            try:
+                result_i.summary["water_animation_basis"] = "deepcopy(last_model)_incremental_from_previous_water_frame"
+                result_i.summary["water_animation_staged"] = False
+            except Exception:
+                pass
+
+            stored_items.append({
+                "step": i + 1,
+                "z_w_L": float(zL),
+                "z_w_R": float(zR),
+                "z_w_L_solver": float(zL_solver),
+                "z_w_R_solver": float(zR_solver),
+                "model": model_i,
+                "result": result_i,
+            })
+
+            summary_base.append({
+                "Step": i + 1,
+                "z_w_L (m)": float(zL),
+                "z_w_R (m)": float(zR),
+            })
+
         progress.empty()
         st.session_state.water_anim_results = stored_items
         st.session_state.water_anim_summary = summary_base
@@ -5631,6 +5749,8 @@ def render_water_animation():
         auto_x_min, auto_x_max = smart_water_animation_x_range(stored_items, quantity, base_result)
         st.session_state.water_anim_x_min = auto_x_min
         st.session_state.water_anim_x_max = auto_x_max
+        st.session_state.ui_water_anim_x_min = auto_x_min
+        st.session_state.ui_water_anim_x_max = auto_x_max
 
     stored_items = list(st.session_state.get("water_anim_results", []) or [])
     if not stored_items:
@@ -5654,7 +5774,7 @@ def render_water_animation():
     first_fig.frames = frames
     first_fig.update_layout(
         updatemenus=[dict(type="buttons", showactive=False, x=0.02, y=-0.12, xanchor="left", yanchor="top", buttons=[
-            dict(label="Play", method="animate", args=[None, {"frame": {"duration": int(speed_ms), "redraw": True}, "transition": {"duration": 0}, "fromcurrent": True}]),
+            dict(label="Play", method="animate", args=[[str(item["step"]) for item in stored_items], {"frame": {"duration": int(speed_ms), "redraw": True}, "transition": {"duration": 0}, "fromcurrent": False, "mode": "immediate"}]),
             dict(label="Pause", method="animate", args=[[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]),
         ])],
         sliders=[dict(active=0, x=0.18, y=-0.10, len=0.78, currentvalue=dict(prefix="Step "), steps=[
@@ -5881,7 +6001,7 @@ def plot_stage_animation_frame(item: dict[str, Any], quantity: str, x_range: tup
     # Geometry panel
     x_left = -max(3.0, 0.60 * H_R)
     max_L = max([float(s.get("L", 0.0) or 0.0) for s in all_supports] + [0.6 * H_R])
-    x_right = max(3.0, 0.75 * max_L, 0.6 * H_R)
+    x_right = max(3.0, 0.95 * max_L, 0.75 * H_R)
     fig.add_trace(go.Scatter(x=[0, 0], y=[0, H_R], mode="lines", line=dict(color="black", width=4), name="Wall", showlegend=False), row=1, col=1)
     fig.add_trace(go.Scatter(x=[0, x_right], y=[0, 0], mode="lines", line=dict(color="saddlebrown", width=3), name="Retained ground", showlegend=False), row=1, col=1)
     fig.add_trace(go.Scatter(x=[x_left, 0], y=[z_stage, z_stage], mode="lines", line=dict(color="saddlebrown", width=3), name="Excavation level", showlegend=False), row=1, col=1)
@@ -5904,15 +6024,22 @@ def plot_stage_animation_frame(item: dict[str, Any], quantity: str, x_range: tup
         width = 3 if active else 1.5
         dash = None if active else "dot"
         fig.add_trace(go.Scatter(x=[0, x2], y=[z, y2], mode="lines+markers", line=dict(color=color, width=width, dash=dash), marker=dict(size=6), showlegend=False, hovertemplate=f"{code}<extra></extra>"), row=1, col=1)
+        label_x = max(x2, 0.0) + max(0.25, 0.035 * H_R)
         if active:
-            try:
-                f = support_force_for_display(support, result)
-                txt = f"{code}: {f:.1f} kN/m"
-            except Exception:
-                txt = f"{code}: active"
-            fig.add_annotation(x=x2, y=y2, text=txt, showarrow=False, xanchor="left", yanchor="middle", font=dict(size=11, color="#7c2d12"), row=1, col=1)
+            txt = support_label_text(support, result, multiline=True)
+            fig.add_annotation(
+                x=label_x, y=y2, text=txt, showarrow=False,
+                xanchor="left", yanchor="middle", font=dict(size=11, color="#7c2d12"),
+                bgcolor="rgba(255,255,255,0.82)", bordercolor="rgba(255,255,255,0.0)",
+                row=1, col=1,
+            )
         else:
-            fig.add_annotation(x=x2, y=y2, text=f"{code} inactive", showarrow=False, xanchor="left", yanchor="middle", font=dict(size=10, color="#64748b"), row=1, col=1)
+            fig.add_annotation(
+                x=label_x, y=y2, text=f"{code} inactive", showarrow=False,
+                xanchor="left", yanchor="middle", font=dict(size=10, color="#64748b"),
+                bgcolor="rgba(255,255,255,0.70)", bordercolor="rgba(255,255,255,0.0)",
+                row=1, col=1,
+            )
 
     fig.add_annotation(x=x_left * 0.98, y=z_stage, text=item["label"], showarrow=False, xanchor="left", yanchor="bottom", font=dict(size=12, color="#7c2d12"), row=1, col=1)
 
@@ -6008,66 +6135,43 @@ def stage_animation_x_range(items: list[dict[str, Any]], quantity: str) -> tuple
 
 
 def smart_stage_animation_x_range(stored_items, quantity, last_result=None):
-    """
-    Smart x-range for stage animation.
+    """Smart x-range for stage animation.
 
-    It derives x_min/x_max from the actual plotted MAIN traces only.
-    Dashed limit/reference curves such as At-rest, Active and Passive
-    are deliberately ignored.
+    It derives x_min/x_max from the actual plotted MAIN chart traces only.
+    Dashed limit/reference curves such as At-rest, Active and Passive are
+    deliberately ignored, and geometry-panel traces are never considered.
     """
 
     xs = []
-
     skip_words = (
-        "at-rest",
-        "at rest",
-        "active",
-        "passive",
-        "limit",
-        "k0",
-        "ka",
-        "kp",
+        "at-rest", "at rest", "active", "passive", "limit", "k0", "ka", "kp",
     )
 
-    def _is_reference_trace(trace):
-        name = str(getattr(trace, "name", "") or "").lower()
+    def _is_reference_name(name: Any) -> bool:
+        lab = str(name or "").lower()
+        return any(w in lab for w in skip_words)
 
-        if any(w in name for w in skip_words):
-            return True
-
-        line = getattr(trace, "line", None)
-        dash = getattr(line, "dash", None) if line is not None else None
-
-        if dash not in (None, "", "solid"):
-            return True
-
-        return False
+    def _extend_from_result(result: Any) -> None:
+        try:
+            traces, _ = stage_chart_traces(result, quantity)
+        except Exception:
+            return
+        for name, values, _unit in traces:
+            if _is_reference_name(name):
+                continue
+            for v in list(values or []):
+                try:
+                    vf = float(v)
+                except Exception:
+                    continue
+                if math.isfinite(vf):
+                    xs.append(vf)
 
     for item in stored_items or []:
-        try:
-            fig_tmp = plot_stage_animation_frame(
-                item,
-                quantity,
-                (-1.0e12, 1.0e12),
-            )
-        except Exception:
-            continue
+        _extend_from_result(item.get("result"))
 
-        for tr in fig_tmp.data:
-            if _is_reference_trace(tr):
-                continue
-
-            x = getattr(tr, "x", None)
-            if x is None:
-                continue
-
-            try:
-                arr = np.asarray(x, dtype=float).ravel()
-                arr = arr[np.isfinite(arr)]
-                if arr.size:
-                    xs.extend(arr.tolist())
-            except Exception:
-                continue
+    if not xs and last_result is not None:
+        _extend_from_result(last_result)
 
     vals = np.asarray(xs, dtype=float)
     vals = vals[np.isfinite(vals)]
@@ -6162,6 +6266,117 @@ def render_stages_and_reinforcement(model_preview: Any):
         render_reinforcement(base_model)
 
 
+def current_stage_animation_signature(base_model: Any | None = None) -> str:
+    """Signature of all inputs that control the staged excavation sequence."""
+    if base_model is None:
+        base_model = build_model()
+
+    H_R = float(base_model.geometry.H_R)
+    H_L = float(base_model.geometry.H_L)
+    n = max(1, int(st.session_state.get("n_excavation_stages", 1)))
+    stage_df = normalize_stage_df(st.session_state.get("stages_df"), H_R, H_L, n)
+
+    payload = {
+        "model": repr(base_model),
+        "solver_display": st.session_state.get("solver_display"),
+        "reinforcement_type": st.session_state.get("reinforcement_type"),
+        "n_excavation_stages": n,
+        "intermediate_stage_drops": max(0, int(st.session_state.get("intermediate_stage_drops", 0))),
+        "stage_q_L_apply": st.session_state.get("stage_q_L_apply", "Stage N+1 (after final)"),
+        "stage_q_R_apply": st.session_state.get("stage_q_R_apply", "Stage 0"),
+        "stages_df": stage_df.to_json(orient="split", double_precision=12),
+    }
+    return hashlib.sha256(repr(payload).encode("utf-8")).hexdigest()
+
+
+def solve_staged_excavation_sequence(base_model: Any | None = None, progress=None) -> tuple[list[dict[str, Any]], str]:
+    """Solve the excavation-stage sequence once and return reusable animation items."""
+    if base_model is None:
+        base_model = build_model()
+
+    H_R = float(base_model.geometry.H_R)
+    H_L = float(base_model.geometry.H_L)
+    n = max(1, int(st.session_state.get("n_excavation_stages", 1)))
+    n_inter = max(0, int(st.session_state.get("intermediate_stage_drops", 0)))
+
+    stage_df = normalize_stage_df(st.session_state.get("stages_df"), H_R, H_L, n)
+    st.session_state.stages_df = stage_df
+
+    qL_apply_stage = _stage_load_index_from_text(
+        st.session_state.get("stage_q_L_apply", "Stage N+1 (after final)"),
+        n,
+        default=n + 1,
+    )
+    qR_apply_stage = _stage_load_index_from_text(
+        st.session_state.get("stage_q_R_apply", "Stage 0"),
+        n,
+        default=0,
+    )
+
+    seq = build_stage_sequence(
+        stage_df["z excavation level (m)"].tolist(),
+        n_inter,
+        qL_apply_stage=qL_apply_stage,
+        qR_apply_stage=qR_apply_stage,
+    )
+
+    all_supports = sorted(
+        list(getattr(base_model, "reinforcement_supports", []) or []),
+        key=lambda s: float(s.get("z", 0.0) or 0.0),
+    )
+
+    stored = []
+    for i, row in enumerate(seq):
+        if progress is not None:
+            try:
+                progress.progress(
+                    (i + 1) / max(1, len(seq)),
+                    text=f"{row['label']} ({i + 1}/{len(seq)})",
+                )
+            except Exception:
+                pass
+
+        model_i = model_for_excavation_stage(
+            base_model,
+            float(row["z"]),
+            int(row["active_supports"]),
+            bool(row.get("qL_active", True)),
+            bool(row.get("qR_active", True)),
+        )
+
+        result_i = cached_solve(model_i)
+
+        stored.append({
+            **row,
+            "step": i + 1,
+            "model": model_i,
+            "result": result_i,
+            "all_supports": all_supports,
+            "stage_depths": stage_df["z excavation level (m)"].tolist(),
+        })
+
+    return stored, current_stage_animation_signature(base_model)
+
+
+def stage_animation_cache_is_current(base_model: Any | None = None) -> bool:
+    stored = list(st.session_state.get("stage_anim_results", []) or [])
+    if not stored:
+        return False
+    return st.session_state.get("stage_anim_signature") == current_stage_animation_signature(base_model)
+
+
+def refresh_default_stage_total_pressure_on_tab_entry() -> None:
+    """Mimic re-selecting Total horizontal pressure when the page is entered."""
+    current_page = st.session_state.get("active_page")
+    previous_page = st.session_state.get("_previous_active_page_for_stage_refresh")
+    if current_page == "Stages animation" and previous_page != "Stages animation":
+        if st.session_state.get("stage_anim_plot_type", "Total horizontal pressure") == "Total horizontal pressure":
+            mark_stage_animation_auto_x()
+            st.session_state.pop("ui_stage_anim_x_min", None)
+            st.session_state.pop("ui_stage_anim_x_max", None)
+    st.session_state["_previous_active_page_for_stage_refresh"] = current_page
+
+
 def render_stages_animation():
     st.markdown('<div class="cut-section-title">Stages animation</div>', unsafe_allow_html=True)
 
@@ -6211,13 +6426,10 @@ def render_stages_animation():
         st.session_state.stage_anim_x_min = auto_x_min
         st.session_state.stage_anim_x_max = auto_x_max
 
-        # IMPORTANT:
-        # initialize widget values ONLY BEFORE widget creation
-        if "ui_stage_anim_x_min" not in st.session_state:
-            st.session_state.ui_stage_anim_x_min = auto_x_min
-
-        if "ui_stage_anim_x_max" not in st.session_state:
-            st.session_state.ui_stage_anim_x_max = auto_x_max
+        # IMPORTANT: set widget values before widget creation.  This path is also
+        # used when the page re-selects Total horizontal pressure on entry.
+        st.session_state.ui_stage_anim_x_min = auto_x_min
+        st.session_state.ui_stage_anim_x_max = auto_x_max
 
         st.session_state.stage_anim_auto_x_pending = False
 
@@ -6303,8 +6515,19 @@ def render_stages_animation():
     )
 
     # ==========================================================
-    # RUN BUTTON
+    # RUN / REUSE BUTTON
     # ==========================================================
+    if stage_animation_cache_is_current(base_model):
+        st.success(
+            "Current staged results are already available from Run & solver monitor. "
+            "The animation below reuses them without rerunning the stages."
+        )
+    elif stored_items_for_range:
+        st.warning(
+            "Stored staged results exist, but the stage inputs/model have changed. "
+            "Press 'Run stages animation' to refresh them."
+        )
+
     if st.button(
         "Run stages animation",
         key="run_stages_animation",
@@ -6312,74 +6535,18 @@ def render_stages_animation():
         use_container_width=True,
     ):
 
-        qL_apply_stage = _stage_load_index_from_text(
-            st.session_state.get(
-                "stage_q_L_apply",
-                "Stage N+1 (after final)",
-            ),
-            n,
-            default=n + 1,
-        )
-
-        qR_apply_stage = _stage_load_index_from_text(
-            st.session_state.get(
-                "stage_q_R_apply",
-                "Stage 0",
-            ),
-            n,
-            default=0,
-        )
-
-        seq = build_stage_sequence(
-            stage_df["z excavation level (m)"].tolist(),
-            n_inter,
-            qL_apply_stage=qL_apply_stage,
-            qR_apply_stage=qR_apply_stage,
-        )
-
         progress = st.progress(
             0.0,
             text="Running staged excavation sequence...",
         )
 
-        stored = []
-
-        all_supports = sorted(
-            list(getattr(base_model, "reinforcement_supports", []) or []),
-            key=lambda s: float(s.get("z", 0.0) or 0.0),
-        )
-
         try:
-            for i, row in enumerate(seq):
-
-                progress.progress(
-                    (i + 1) / max(1, len(seq)),
-                    text=f"{row['label']} ({i+1}/{len(seq)})",
-                )
-
-                model_i = model_for_excavation_stage(
-                    base_model,
-                    float(row["z"]),
-                    int(row["active_supports"]),
-                    bool(row.get("qL_active", True)),
-                    bool(row.get("qR_active", True)),
-                )
-
-                result_i = cached_solve(model_i)
-
-                stored.append({
-                    **row,
-                    "step": i + 1,
-                    "model": model_i,
-                    "result": result_i,
-                    "all_supports": all_supports,
-                    "stage_depths": stage_df["z excavation level (m)"].tolist(),
-                })
-
+            stored, signature = solve_staged_excavation_sequence(base_model, progress=progress)
         finally:
             progress.empty()
 
         st.session_state.stage_anim_results = stored
+        st.session_state.stage_anim_signature = signature
 
         auto_x_min, auto_x_max = smart_stage_animation_x_range(
             stored,
@@ -6466,14 +6633,15 @@ def render_stages_animation():
                         label="Play",
                         method="animate",
                         args=[
-                            None,
+                            [str(item["step"]) for item in stored],
                             {
                                 "frame": {
                                     "duration": int(speed_ms),
                                     "redraw": True,
                                 },
                                 "transition": {"duration": 0},
-                                "fromcurrent": True,
+                                "fromcurrent": False,
+                                "mode": "immediate",
                             },
                         ],
                     ),
@@ -6648,6 +6816,7 @@ except Exception as exc:
     st.error(str(exc))
 
 page = st.session_state.active_page
+refresh_default_stage_total_pressure_on_tab_entry()
 if page == "Model inputs":
     render_model_inputs(model_preview)
 
